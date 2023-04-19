@@ -1,10 +1,29 @@
+exclude: 'docs|node_modules|migrations|.git|.tox'
+default_stages: [commit]
+fail_fast: true
+
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    # Supported hooks: https://pre-commit.com/hooks.html
+    rev: "v4.0.1"
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        # - id: no-commit-to-branch #  main and master are covered by default
+
   - repo: https://github.com/charliermarsh/ruff-pre-commit
     rev: "v0.0.230"
     hooks:
       - id: ruff
-      
+
   - repo: https://github.com/psf/black
     rev: "22.8.0"
     hooks:
       - id: black
+
+# sets up .pre-commit-ci.yaml to ensure pre-commit dependencies stay up to date
+ci:
+    autoupdate_schedule: weekly
+    skip: []
+    submodules: false
