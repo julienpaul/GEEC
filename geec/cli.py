@@ -22,6 +22,23 @@ app = typer.Typer()
 
 
 @app.command()
+def poly():
+    cube = [
+        (-0.5, -0.5, 0.0),
+        (0.5, -0.5, 0.0),
+        (0.5, 0.5, 0.0),
+        (-0.5, 0.5, 0.0),
+        (-0.5, -0.5, -1.0),
+        (0.5, -0.5, -1.0),
+        (0.5, 0.5, -1.0),
+        (-0.5, 0.5, -1.0),
+    ]
+
+    points = np.array(cube)
+    Polyhedron(points)
+
+
+@app.command()
 def test():
     cube = [
         (-0.5, -0.5, 0.0),
@@ -48,8 +65,7 @@ def test():
 
     g = np.mgrid[x_start:x_end:x_step, y_start:y_end:y_step, z_start:z_end:z_step]
 
-    listobs = g.reshape(-1, len(g))
-    df = pd.DataFrame(listobs, columns=["x_mes", "y_mes", "z_mes"])
+    listobs = np.transpose(g.reshape(len(g), -1))
     # for i in range(listobs.shape[-1]):
     #     obs = listobs[..., i]
     # add empty column
@@ -59,7 +75,9 @@ def test():
         s.compute_gravity(p, density, Gc)
         return s.G
 
+    df = pd.DataFrame(listobs, columns=["x_mes", "y_mes", "z_mes"])
     df[["Gx", "Gy", "Gz"]] = df.apply(add_gravity, axis=1, result_type="expand")
+
     # df["G"] = df.apply(add_gravity, axis=1)
 
     # df[["Gx", "Gy", "Gz"]] = 0
@@ -69,13 +87,16 @@ def test():
     #     df.loc[index, ["Gx", "Gy", "Gz"]] = s.G
     #     # print(f"Gravity at points {np.array(row)} is {s.G}")
 
-    filepath = Path("output/out.csv")
+    filepath = Path(__file__)
+    filepath = filepath.parent.parent / "output" / "out.csv"
     filepath.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(filepath, index=False)
     logger.info("done")
 
 
 def main():
+    from geec import timing  # noqa: F401
+
     app()
 
 

@@ -56,7 +56,9 @@ class Station:
         rprint(self)
         return ""
 
-    def compute_gravity(self, polyhedron: Polyhedron, density: float, Gc: float) -> None:
+    def compute_gravity(
+        self, polyhedron: Polyhedron, density: float, Gc: float
+    ) -> None:
         """
         compute gravity from polyhedron with density 'density' and
         gravitational constant 'Gc' at the station point
@@ -110,6 +112,7 @@ class _Face:
         self._points = np.full(1, np.nan)
         self._un = np.full(3, np.nan)
         self._edges = []
+        self._simplex = None
         # computed here after
         self.sign = 0
         self.dp1 = np.nan
@@ -127,6 +130,12 @@ class _Face:
         if self.obj is not None:
             self._un = self.obj.un
         return self._un
+
+    @property
+    def simplex(self) -> np.ndarray:
+        if self.obj is not None:
+            self._simplex = self.obj.simplex
+        return self._simplex
 
     @property
     def edges(self) -> list[Edge]:
@@ -177,7 +186,9 @@ class _Face:
             w -= (npoints - 2) * np.pi
             self.omega = -self.sign * w
 
-    def _angle(self, p1: np.ndarray, p2: np.ndarray, p3: np.ndarray, un: np.ndarray) -> float:
+    def _angle(
+        self, p1: np.ndarray, p2: np.ndarray, p3: np.ndarray, un: np.ndarray
+    ) -> float:
         """
         finds the angle between planes O-p1-p2 and O-p2-p3,
         where
@@ -321,7 +332,9 @@ class _Edge:
             b2 = b / (2 * L)
 
         if r1 + b2 != 0:
-            integral = (1 / L) * math.log((math.sqrt(L2 + b + r12) + L + b2) / (r1 + b2))
+            integral = (1 / L) * math.log(
+                (math.sqrt(L2 + b + r12) + L + b2) / (r1 + b2)
+            )
 
         # change sign of I if p1,p2 were interchanged
         self.pqr = integral * V * chsgn
