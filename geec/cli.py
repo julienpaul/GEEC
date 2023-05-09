@@ -78,9 +78,9 @@ def test():
     df = pd.DataFrame(listobs, columns=["x_mes", "y_mes", "z_mes"])
     df[["Gx", "Gy", "Gz"]] = df.apply(add_gravity, axis=1, result_type="expand")
 
-    # df["G"] = df.apply(add_gravity, axis=1)
+    # listG = np.apply_along_axis(add_gravity, axis=1, arr=listobs)
+    # df[["Gx", "Gy", "Gz"]] = G
 
-    # df[["Gx", "Gy", "Gz"]] = 0
     # for index, row in df[["x_mes", "y_mes", "z_mes"]].iterrows():
     #     s = Station(np.array(row))
     #     s.compute_gravtiy(p, density, Gc)
