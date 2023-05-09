@@ -20,6 +20,14 @@ class Testcube:
         for i, face in enumerate(p.faces):
             assert np.array_equal(face.simplex, np.array(expected.simplices[i]))
 
+    def test_unit_outward(self, cube, expected):
+        """ """
+        points = np.array(cube.points)
+        p = Polyhedron(points)
+
+        for i, face in enumerate(p.faces):
+            assert np.array_equal(face.un, np.array(expected.un[i]))
+
     def test_edges(self, cube, expected):
         """ """
         points = np.array(cube.points)
