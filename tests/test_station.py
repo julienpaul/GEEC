@@ -10,6 +10,8 @@ import numpy as np
 from geec.polyhedron import Polyhedron
 from geec.station import Station
 
+from .conftest import Cube, CubeExcepted
+
 # np.allclose => absolute(a - b) <= (atol + rtol * absolute(b))
 atol = 1e-14  # absolute tolerance
 rtol = 0  # relative tolerance
@@ -50,7 +52,7 @@ class Testcube:
                 edge._get_ccw_line_integrals(s.coord)
                 # assert np.array_equal(edge.pqr, np.array(expected.edge_pqr[i][j]))
                 assert np.allclose(
-                    edge.pqr,
+                    edge.pqr,  # type: ignore[attr-defined]
                     np.array(expected.edge_pqr[i][j]),
                     rtol=rtol,
                     atol=atol,
@@ -77,7 +79,7 @@ class Testcube:
             face._get_ccw_line_integrals(s.coord)
             # assert np.array_equal(face._pqr, np.array(expected.pqr[i]))
             assert np.allclose(
-                face._pqr,
+                face._pqr,  # type: ignore[attr-defined]
                 np.array(expected.pqr[i]),
                 rtol=rtol,
                 atol=atol,
@@ -95,7 +97,7 @@ class Testcube:
         for i, face in enumerate(p.faces):
             # assert np.array_equal(g, np.array(expected.g[i]))
             assert np.allclose(
-                face._g,
+                face._g,  # type: ignore[attr-defined]
                 np.array(expected.g[i]),
                 rtol=rtol,
                 atol=atol,
