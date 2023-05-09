@@ -180,6 +180,7 @@ class Face:
         self._sign = None
         self._omega = None
         self._pqr = None
+        self._g = None
 
     def reset(self):
         """ """
@@ -357,7 +358,6 @@ class Face:
         # print(f"face: {self.simplex}")
         for edge in self.edges:
             edge._get_ccw_line_integrals(coord)
-            # print(f"edge pqr: {edge._pqr}")
 
             self.add_pqr(edge.pqr)
 
@@ -393,7 +393,8 @@ class Face:
         else:
             gx, gy, gz = 0, 0, 0
 
-        return np.array([gx, gy, gz])
+        self._g = np.array([gx, gy, gz])
+        return self._g
 
 
 class Polyhedron:

@@ -23,6 +23,7 @@ class Testcube:
         points = np.array(cube.points)
         p = Polyhedron(points)
 
+        assert p.nfaces == 12
         for i, face in enumerate(p.faces):
             assert np.array_equal(face.simplex, np.array(expected.simplices[i]))
 
@@ -92,10 +93,9 @@ class Testcube:
         s.compute_gravity(p, cube.density, cube.Gc)
 
         for i, face in enumerate(p.faces):
-            g = face.get_gravity(s.coord, cube.density, cube.Gc)
             # assert np.array_equal(g, np.array(expected.g[i]))
             assert np.allclose(
-                g,
+                face._g,
                 np.array(expected.g[i]),
                 rtol=rtol,
                 atol=atol,
