@@ -30,6 +30,12 @@ def log(s, elapsed=None):
     logger.info(line)
 
 
+def midlog(s):
+    end = time()
+    elapsed = end - start
+    log(s, _secondsToStr(elapsed))
+
+
 def endlog():
     end = time()
     elapsed = end - start

@@ -10,9 +10,11 @@ import numpy as np
 from geec.polyhedron import Polyhedron
 from geec.station import Station, _Edge, _Face
 
+from .conftest import Cube, CubeExcepted
+
 
 class Testcube:
-    def test_simplices(self, cube, expected):
+    def test_simplices(self, cube: Cube, expected: CubeExcepted):
         """ """
         points = np.array(cube.points)
         p = Polyhedron(points)
@@ -20,7 +22,7 @@ class Testcube:
         for i, face in enumerate(p.faces):
             assert np.array_equal(face.simplex, np.array(expected.simplices[i]))
 
-    def test_unit_outward(self, cube, expected):
+    def test_unit_outward(self, cube: Cube, expected: CubeExcepted):
         """ """
         points = np.array(cube.points)
         p = Polyhedron(points)
@@ -28,7 +30,7 @@ class Testcube:
         for i, face in enumerate(p.faces):
             assert np.array_equal(face.un, np.array(expected.un[i]))
 
-    def test_edges(self, cube, expected):
+    def test_edges(self, cube: Cube, expected: CubeExcepted):
         """ """
         points = np.array(cube.points)
         p = Polyhedron(points)
@@ -40,7 +42,7 @@ class Testcube:
                 e.get_ccw_line_integrals(cube.obs)
                 assert np.array_equal(e.pqr, np.array(expected.edge_pqr[i][j]))
 
-    def test_faces(self, cube, expected):
+    def test_faces(self, cube: Cube, expected: CubeExcepted):
         """ """
         points = np.array(cube.points)
         p = Polyhedron(points)
@@ -57,7 +59,7 @@ class Testcube:
             f.get_ccw_line_integrals(s.coord)
             assert np.array_equal(f.pqr, np.array(expected.pqr[i]))
 
-    def test_faces_gravity(self, cube, expected):
+    def test_faces_gravity(self, cube: Cube, expected: CubeExcepted):
         """ """
 
         points = np.array(cube.points)
@@ -74,7 +76,7 @@ class Testcube:
             g = f.get_gravity(cube.density, cube.Gc)
             assert np.array_equal(g, np.array(expected.g[i]))
 
-    def test_gravity(self, cube, expected):
+    def test_gravity(self, cube: Cube, expected: CubeExcepted):
         """ """
         points = np.array(cube.points)
         p = Polyhedron(points)
@@ -84,7 +86,7 @@ class Testcube:
 
         assert np.array_equal(s.G, expected.G)
 
-    def test_gravity_listobs(self, cube, expected):
+    def test_gravity_listobs(self, cube: Cube, expected: CubeExcepted):
         """ """
         points = np.array(cube.points)
         p = Polyhedron(points)

@@ -52,7 +52,7 @@ class Edge:
         self._pqr = None
 
     @property
-    def pqr(self) -> np.ndarray:
+    def pqr(self) -> np.ndarray | None:
         return self._pqr
 
     def set_twin(self, twin) -> None:
@@ -202,7 +202,7 @@ class Face:
         rprint(self)
         return ""
 
-    def add_pqr(self, pqr: np.ndarray) -> None:
+    def add_pqr(self, pqr: np.ndarray | None) -> None:
         """ """
         if self._pqr is not None:
             self._pqr += pqr
