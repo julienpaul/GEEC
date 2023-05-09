@@ -16,7 +16,6 @@ typer = "^0.7.0"
 loguru = "^0.7.0"
 numpy = "^1.24.2"
 scipy = "^1.10.1"
-perfplot = "^0.10.2"
 pandas = "^2.0.1"
 rich = "^13.3.5"
 
@@ -28,6 +27,7 @@ mypy = "^0.981"
 pre-commit = "^2.20.0"
 tox = "^3.25.1"
 black = "^23.3.0"
+perfplot = "^0.10.2"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.4.2"
