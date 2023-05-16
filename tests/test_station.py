@@ -15,8 +15,6 @@ from tests.conftest import Cube, CubeExcepted
 atol = 1e-14  # absolute tolerance
 rtol = 0  # relative tolerance
 
-from .conftest import Cube, CubeExcepted
-
 
 class TestCube:
     def test_edges(self, cube: Cube, expected: CubeExcepted):
