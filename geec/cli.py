@@ -17,7 +17,11 @@ from loguru import logger
 from geec.polyhedron import Polyhedron
 from geec.station import Station
 
-logger.add(Path("logs") / "geec_{time}.log")
+# setup log directory
+_ = Path(__file__)
+logdir = _.parent.parent / "log"
+logdir.mkdir(parents=True, exist_ok=True)
+logger.add(logdir / "geec_{time}.log")
 app = typer.Typer()
 
 
@@ -58,40 +62,31 @@ def test():
     Gc = 6.67408e-11
     # obs = np.array([-1.05, -1.05, 0])
 
-    # Start, End ans Step
-    x_start, x_end, x_step = -1.05, 1.05, 0.1
-    y_start, y_end, y_step = -1.05, 1.05, 0.1
+    # Start, End and Step
+    x_start, x_end, x_step = -1.05, 1.06, 0.1
+    y_start, y_end, y_step = -1.05, 1.06, 0.1
     z_start, z_end, z_step = 0, 1, 1
 
     g = np.mgrid[x_start:x_end:x_step, y_start:y_end:y_step, z_start:z_end:z_step]
-
-    listobs = np.transpose(g.reshape(len(g), -1))
-    # for i in range(listobs.shape[-1]):
-    #     obs = listobs[..., i]
-    # add empty column
+    listObs = np.transpose(g.reshape(len(g), -1))
 
     def add_gravity(row):
         s = Station(np.array(row))
         s.compute_gravity(p, density, Gc)
         return s.G
 
-    df = pd.DataFrame(listobs, columns=["x_mes", "y_mes", "z_mes"])
-    df[["Gx", "Gy", "Gz"]] = df.apply(add_gravity, axis=1, result_type="expand")
+    # create dataframe
+    df = pd.DataFrame(listObs, columns=["x_mes", "y_mes", "z_mes"])
+    # df[["Gx", "Gy", "Gz"]] = df.apply(add_gravity, axis=1, result_type="expand")
 
-    # listG = np.apply_along_axis(add_gravity, axis=1, arr=listobs)
-    # df[["Gx", "Gy", "Gz"]] = G
+    listG = np.apply_along_axis(add_gravity, axis=1, arr=listObs)
+    df[["Gx", "Gy", "Gz"]] = listG
 
-    # for index, row in df[["x_mes", "y_mes", "z_mes"]].iterrows():
-    #     s = Station(np.array(row))
-    #     s.compute_gravtiy(p, density, Gc)
-    #     df.loc[index, ["Gx", "Gy", "Gz"]] = s.G
-    #     # print(f"Gravity at points {np.array(row)} is {s.G}")
-
+    # Save result in csv file
     filepath = Path(__file__)
     filepath = filepath.parent.parent / "output" / "out.csv"
     filepath.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(filepath, index=False)
-    logger.info("done")
 
 
 def main():

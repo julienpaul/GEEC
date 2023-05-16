@@ -2,7 +2,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
 import perfplot
 
 # applying a function to a list
@@ -60,6 +59,7 @@ b = perfplot.bench(
 
 out = Path(__file__).with_suffix(".png")
 out = out.parent / "plot" / out.name
+out.mkdir(parents=True, exist_ok=True)
 b.save(
     out,
     logx=True,

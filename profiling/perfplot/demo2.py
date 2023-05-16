@@ -1,21 +1,19 @@
 from pathlib import Path
 
 import numpy as np
-
 import perfplot
 
-# compare different NumPy 2D array concatenation methods
-
+# compare different NumPy array concatenation methods
 b = perfplot.bench(
-    setup=lambda n: np.random.rand(n, 3),  # or setup=np.random.rand
+    setup=lambda n: np.random.rand(n),  # or setup=np.random.rand
     kernels=[
         lambda a: np.c_[a, a],
-        lambda a: np.stack([a, a], axis=1).reshape(len(a), -1),
-        lambda a: np.hstack([a, a]),
+        lambda a: np.stack([a, a]).T,
+        lambda a: np.vstack([a, a]).T,
         lambda a: np.column_stack([a, a]),
-        lambda a: np.concatenate([a, a], axis=1),
+        lambda a: np.concatenate([a[:, None], a[:, None]], axis=1),
     ],
-    labels=["c_", "stack", "hstack", "column_stack", "concat"],
+    labels=["c_", "stack", "vstack", "column_stack", "concat"],
     n_range=[2**k for k in range(25)],
     xlabel="len(a)",
     # More optional arguments with their default values:
@@ -32,4 +30,4 @@ b = perfplot.bench(
 
 out = Path(__file__).with_suffix(".png")
 out = out.parent / "plot" / out.name
-b.save(out, logx=True, logy=True)
+b.save(out)

@@ -40,7 +40,7 @@ class Station:
             raise KeyError("'coord' must be a numpy array.")
 
         self.coord = coord
-        self.G = np.full(3, 0.0)
+        self.G = np.zeros(3)
 
     def __rich_repr__(self):
         yield "coord", self.coord
@@ -58,25 +58,22 @@ class Station:
         compute gravity from polyhedrons with density 'density' and
         gravitational constant 'Gc' at the station point
 
-        density: []
-        Gc: Gravitational constant []
+        polyhedrons: list of instance of Polyhedron object
+        density: [kg m-3]
+        Gc: Gravitational constant [m3 kg-1 s-2]
+
+        return Gravity fields components [mGal]
+
+        Note: 1 mGal = 10-5 m s-2
         """
         logger.trace("compute gravity")
-        # if self.obs:
-        # self.obs = np.insert(self.obs, self.nobs, obs, axis=0)
-        # self.nobs += 1
-        # else:
-        # self.obs = np.array([obs])
-        # self.nobs = 1
         if not isinstance(polyhedrons, list):
             polyhedrons = [polyhedrons]
 
         if not all(isinstance(x, Polyhedron) for x in polyhedrons):
             raise TypeError("polyhedrons should be of type Polyhedron")
 
-        # TODO: check the fastest
         for poly in polyhedrons:
-            # poly = deepcopy(polyhedron)
             self.G += poly.get_gravity(self.coord, density, Gc)
 
 

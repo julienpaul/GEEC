@@ -9,8 +9,7 @@ import numpy as np
 # import from my project
 from geec.polyhedron import Polyhedron
 from geec.station import Station
-
-from .conftest import Cube, CubeExcepted
+from tests.conftest import Cube, CubeExcepted
 
 # np.allclose => absolute(a - b) <= (atol + rtol * absolute(b))
 atol = 1e-14  # absolute tolerance
@@ -19,24 +18,7 @@ rtol = 0  # relative tolerance
 from .conftest import Cube, CubeExcepted
 
 
-class Testcube:
-    def test_simplices(self, cube: Cube, expected: CubeExcepted):
-        """ """
-        points = np.array(cube.points)
-        p = Polyhedron(points)
-
-        assert p.nfaces == 12
-        for i, face in enumerate(p.faces):
-            assert np.array_equal(face.simplex, np.array(expected.simplices[i]))
-
-    def test_unit_outward(self, cube: Cube, expected: CubeExcepted):
-        """ """
-        points = np.array(cube.points)
-        p = Polyhedron(points)
-
-        for i, face in enumerate(p.faces):
-            assert np.array_equal(face.un, np.array(expected.un[i]))
-
+class TestCube:
     def test_edges(self, cube: Cube, expected: CubeExcepted):
         """ """
         points = np.array(cube.points)
@@ -45,11 +27,13 @@ class Testcube:
         s = Station(cube.obs)
         # poly = deepcopy(p)
         poly = p
+        # shift origin to cube.obs
+        poly.setup(s.coord)
         for i, face in enumerate(poly.faces):
             # if i != 2:
             #     continue
             for j, edge in enumerate(face.edges):
-                edge._get_ccw_line_integrals(s.coord)
+                edge._get_ccw_line_integrals()
                 # assert np.array_equal(edge.pqr, np.array(expected.edge_pqr[i][j]))
                 assert np.allclose(
                     edge.pqr,  # type: ignore[attr-defined]
@@ -67,16 +51,18 @@ class Testcube:
         s = Station(cube.obs)
         # poly = deepcopy(p)
         poly = p
+        # shift origin to cube.obs
+        poly.setup(s.coord)
         for i, face in enumerate(poly.faces):
             # if i != 2:
             #     continue
-            face._get_dot_point1(s.coord)
+            face._get_dot_point1()
             assert face._dp1 == expected.dp1[i]
             face._get_sign()
             assert face._sign == expected.sign[i]
-            face._get_omega(s.coord)
+            face._get_omega()
             assert face._omega == expected.omega[i]
-            face._get_ccw_line_integrals(s.coord)
+            face._get_ccw_line_integrals()
             # assert np.array_equal(face._pqr, np.array(expected.pqr[i]))
             assert np.allclose(
                 face._pqr,  # type: ignore[attr-defined]

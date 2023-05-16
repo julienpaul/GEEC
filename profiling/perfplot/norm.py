@@ -1,21 +1,28 @@
 from pathlib import Path
 
 import numpy as np
-
 import perfplot
 
-# compare different NumPy array concatenation methods
+
+def np_linalg_norm(a):
+    y = np.linalg.norm(a, axis=1)
+    return y
+
+
+def comprehension(a):
+    y = [np.linalg.norm(x) for x in a]
+    return y
+
+
+# compare different methods
 b = perfplot.bench(
-    setup=lambda n: np.random.rand(n),  # or setup=np.random.rand
+    setup=lambda n: np.random.rand(n, 3),  # or setup=np.random.rand
     kernels=[
-        lambda a: np.c_[a, a],
-        lambda a: np.stack([a, a]).T,
-        lambda a: np.vstack([a, a]).T,
-        lambda a: np.column_stack([a, a]),
-        lambda a: np.concatenate([a[:, None], a[:, None]], axis=1),
+        np_linalg_norm,
+        comprehension,
     ],
-    labels=["c_", "stack", "vstack", "column_stack", "concat"],
-    n_range=[2**k for k in range(25)],
+    labels=["np_linalg_norm", "comprehension"],
+    n_range=[2**k for k in range(15)],
     xlabel="len(a)",
     # More optional arguments with their default values:
     # logx="auto",  # set to True or False to force scaling

@@ -1,0 +1,19 @@
+
+# cProfile
+output_file="/home/julienpaul/Code/geec/profiling/prof/test.prof"
+# python -m cProfile [-o output_file] [-s sort_order] (-m module | myscript.py)
+python -m cProfile -o output_file -m geec test
+
+import pstats
+sortby = "cumulative"
+output_file="/home/julienpaul/Code/geec/profiling/prof/test.prof"
+ps = pstats.Stats(output_file).sort_stats(sortby)
+ps.print_stats(50)
+
+# see also
+
+https://www.toucantoco.com/en/tech-blog/python-performance-optimization
+https://www.youtube.com/watch?v=QJwVYlDzAXs
+https://web.archive.org/web/20170318204046/http://lanyrd.com/2013/pycon/scdywg/
+
+https://stackoverflow.com/questions/23849097/numpy-np-apply-along-axis-function-speed-up

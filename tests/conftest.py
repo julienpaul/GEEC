@@ -27,7 +27,7 @@ class Cube:
             (-0.5, 0.5, -1.0),
         ]
 
-        # Start, End ans Step
+        # Start, End and Step
         x_start, x_end, x_step = -1.05, 1.05, 0.7
         y_start, y_end, y_step = -1.05, 1.05, 0.7
         z_start, z_end, z_step = 0, 1, 1

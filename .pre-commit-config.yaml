@@ -22,6 +22,15 @@ repos:
     hooks:
       - id: black
 
+  - repo: local
+    hooks:
+      - id: tests
+        name: pytest
+        entry: poetry run pytest
+        language: python
+        pass_filenames: false
+        always_run: true
+
 # sets up .pre-commit-ci.yaml to ensure pre-commit dependencies stay up to date
 ci:
     autoupdate_schedule: weekly
