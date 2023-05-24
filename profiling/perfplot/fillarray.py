@@ -38,6 +38,8 @@ b = perfplot.bench(
     equality_check=None,  # set to None to disable "correctness" assertion
 )
 out = Path(__file__).with_suffix(".png")
-out = out.parent / "plot" / out.name
+outdir = out.parent / "plot"
+outdir.mkdir(parents=True, exist_ok=True)
+out = outdir / out.name
 
 b.save(out)

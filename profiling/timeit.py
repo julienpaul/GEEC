@@ -180,3 +180,13 @@ def f2(b, L):
     b2 = b / L
 """
 timeit.timeit("f1(b, L)", setup=setup, number=10000000)
+
+setup = """
+from typer.testing import CliRunner
+from geec.cli import app
+
+def f1():
+    runner = CliRunner()
+    result = runner.invoke(app, "test")
+"""
+timeit.timeit("f1()", setup=setup, number=100)

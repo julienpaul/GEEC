@@ -1,36 +1,33 @@
-import math
 from pathlib import Path
 
 import numpy as np
 import perfplot
 
 
-def for_sum(a):
+def add(a):
     _sum = 0.0
     for i in range(len(a)):
         _sum += a[i]
     return _sum
 
 
-def for_sum2(a):
+def add_assign(a):
     _sum = 0.0
-    for i in a:
-        _sum += i
+    for i in range(len(a)):
+        _sum = _sum + a[i]
     return _sum
 
 
 b = perfplot.bench(
     setup=np.random.rand,  # lambda n: np.random.rand(n)
-    kernels=[for_sum, for_sum2, np.sum, sum, math.fsum],
-    labels=["for-sum", "for_sum2", "numpy.sum", "sum", "math.fsum"],
+    kernels=[add, add_assign],
+    labels=["add", "add_assign"],
     n_range=[2**k for k in range(18)],
     xlabel="len(a)",
 )
 
 out = Path(__file__).with_suffix(".png")
-outdir = out.parent / "plot"
-outdir.mkdir(parents=True, exist_ok=True)
-out = outdir / out.name
+out = out.parent / "plot" / out.name
 b.save(
     out,
     logx=True,

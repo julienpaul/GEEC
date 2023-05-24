@@ -1,54 +1,47 @@
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import perfplot
 
-# applying a function to a list
+
+def diag_one(x):
+    for _a in x:
+        A = np.diag(-np.ones(3), 0)
+    return A
 
 
-def square(x):
-    return x**2
+def diag_full(x):
+    for _a in x:
+        A = np.diag(np.full(3, -1))
+    return A
 
 
-def for_list(a):
-    y = 0.0
-    for _x in a:
-        y = square(a)
-    return y
+def zero_slice(x):
+    for _a in x:
+        A = np.zeros((3, 3), int)
+        A[range(3), range(3)] = -1
+    return A
 
 
-def np_apply_along(a):
-    y = np.apply_along_axis(square, axis=0, arr=a)
-    return y
+# P1=np.tile(p1, (3, 1))
+# np.cross(A,P1)
 
-
-def comprehension(a):
-    y = [square(x) for x in a]
-    return y
-
-
-def pd_apply(a):
-    df = pd.DataFrame(a, columns=["x"])
-    y = df.apply(square, axis=1, result_type="expand")
-    return y
-
+# C.dot(n1)
 
 b = perfplot.bench(
     setup=lambda n: np.random.rand(n),  # or setup=np.random.rand
     kernels=[
-        for_list,
-        np_apply_along,
-        comprehension,
-        pd_apply,
+        diag_one,
+        diag_full,
+        zero_slice,
     ],
-    labels=["for_list", "np_apply_along", "comprehension", "pd_apply"],
+    labels=["diag_one", "diag_full", "zero_slice"],
     n_range=[2**k for k in range(20)],
     xlabel="len(a)",
     # More optional arguments with their default values:
     # logx="auto",  # set to True or False to force scaling
     # logy="auto",
-    equality_check=None,  # set to None to disable "correctness" assertion
+    # equality_check=None,  # set to None to disable "correctness" assertion
     # show_progress=True,
     # target_time_per_measurement=1.0,
     # max_time=None,  # maximum time per measurement
