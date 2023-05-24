@@ -28,7 +28,7 @@ from scipy.optimize import linprog
 from scipy.spatial import ConvexHull
 
 # import from my project
-from geec.utils import cross_product, vector_nan
+from geec.utils import cross_product  # , vector_nan
 
 
 class Edge:
@@ -44,7 +44,10 @@ class Edge:
 
     def __init__(
         self,
-        polyhedron: "Polyhedron",
+        # polyhedron: "Polyhedron",
+        # polypoints: np.ndarray,
+        # polynorm: np.ndarray,
+        points: tuple[np.ndarray, np.ndarray],
         simplex: tuple[np.ndarray, np.ndarray],
         twinface: int,
     ) -> None:
@@ -54,10 +57,13 @@ class Edge:
         twinface: index of the face containing the edge's twin
         """
         logger.trace("initialise Edge")
-        self._polyhedron = polyhedron
+        # self._polyhedron = polyhedron
+        # self.polypoints = polypoints
+        # self.polynorm = polynorm
         self._simplex = np.array(simplex)
-        self.points = self._polyhedron.points[self._simplex]
-        self._norm = self._polyhedron._norm[self._simplex]
+        # self.points = self._polyhedron.points[self._simplex]
+        self.points = points
+        # self._norm = self._polyhedron._norm[self._simplex]
         self.start = self.points[0]
         self.end = self.points[1]
         self.vector = self.end - self.start
@@ -65,12 +71,13 @@ class Edge:
         self._twinface = twinface
         self._twin = None
         # depending on the station, will be computed later
-        self._pqr = vector_nan
+        # self._pqr = vector_nan
+        self._pqr = None
 
     def reset(self):
         """reset value for future computing"""
-        # self._pqr = None
-        self._pqr.fill(np.nan)
+        self._pqr = None
+        # self._pqr.fill(np.nan)
 
     def __rich_repr__(self):
         """rich pretty print fields"""
@@ -85,8 +92,9 @@ class Edge:
         rprint(self)
         return ""
 
+    # def pqr(self) -> np.ndarray:
     @property
-    def pqr(self) -> np.ndarray:
+    def pqr(self) -> np.ndarray | None:
         return self._pqr
 
     def set_twin(self, twin) -> None:
@@ -100,37 +108,50 @@ class Edge:
         else:
             raise TypeError("'twin' must be Edge object")
 
-    def _set_pqr(self, pqr: np.ndarray) -> None:
+    # def _set_pqr(self, pqr: np.ndarray) -> None:
+    def _set_pqr(self, pqr: np.ndarray | None) -> None:
         if isinstance(pqr, np.ndarray):
             self._pqr = pqr
         else:
             raise TypeError("'pqr' must be numpy array")
 
-    def _set_twin_pqr(self, pqr: np.ndarray) -> None:
+    # def _set_twin_pqr(self, pqr: np.ndarray) -> None:
+    def _set_twin_pqr(self, pqr: np.ndarray | None) -> None:
         if isinstance(self._twin, Edge):
             twin = self._twin
             twin._set_pqr(pqr)
         else:
             raise TypeError("'twin' undefined")
 
-    def _get_ccw_line_integrals(self) -> None:
+    def _get_ccw_line_integrals(self, obs: np.ndarray) -> None:
         """
         compute the line integral of vectors (i/r), (j/r), (k/r),
         taken around the egde of the polygon in a counterclockwise direction
 
-        observation points' coordinates are setup through Polyhedron instance
+        Note: observation points' coordinates are setup through Polyhedron instance
         """
-        if np.array_equal(self._pqr, vector_nan, equal_nan=True):
+        # if np.array_equal(self._pqr, vector_nan, equal_nan=True):
+        if self._pqr is None:
             integral = 0
             # use shifted coordinates, see Polyhedron.get_gravity
-            p1, p2 = (
-                self._polyhedron.points[self._simplex][0],
-                self._polyhedron.points[self._simplex][1],
-            )
-            n1, n2 = (
-                self._polyhedron._norm[self._simplex][0],
-                self._polyhedron._norm[self._simplex][1],
-            )
+            p1, p2 = (self.points[0] - obs, self.points[1] - obs)
+            n1, n2 = (np.linalg.norm(p1), np.linalg.norm(p2))
+            # n1, n2 = (
+            #     self.polynorm[self._simplex][0],
+            #     self.polynorm[self._simplex][1],
+            # )
+            # p1, p2 = (
+            #     self.polypoints[self._simplex][0],
+            #     self.polypoints[self._simplex][1],
+            # )
+            # p1, p2 = (
+            #     self._polyhedron.points[self._simplex][0],
+            #     self._polyhedron.points[self._simplex][1],
+            # )
+            # n1, n2 = (
+            #     self._polyhedron._norm[self._simplex][0],
+            #     self._polyhedron._norm[self._simplex][1],
+            # )
             chsgn = 1  # if origin,p1 & p2 are on a st line
             r1 = n1
             if n1 > n2 and np.dot(p1, p2) / (n1 * n2) == 1:  # p1 farther than p2
@@ -153,7 +174,7 @@ class Edge:
                 integral = math.log((math.sqrt(L2 + b + r12) + L + b2) / (r1 + b2)) / L
 
             # change sign of I if p1,p2 were interchanged
-            self._pqr = integral * V * chsgn
+            self._pqr = integral * chsgn * V
             # assign twin value
             self._set_twin_pqr(-self._pqr)
 
@@ -171,7 +192,10 @@ class Face:
 
     def __init__(
         self,
-        polyhedron: "Polyhedron",
+        # polyhedron: "Polyhedron",
+        # polypoints: np.ndarray,  # "Polyhedron",
+        # polynorm: np.ndarray,  # "Polyhedron",
+        points: np.ndarray,
         simplex: np.ndarray,
         un: np.ndarray,
         neighbors: np.ndarray,
@@ -185,11 +209,12 @@ class Face:
         simplices: points indices (from Polyhedron points list) of the neighbors faces
         """
         logger.trace("initialise Face")
-        self._polyhedron = polyhedron
-        self.points = self._polyhedron.points[simplex]
-        # self.points = points
-        self.npoints = len(self.points)
+        # self._polyhedron = polyhedron
+        # self.polypoints = polypoints
+        # self.polynorm = polynorm
+        self.points = points
         self.simplex = simplex
+        self.npoints = len(self.simplex)
         self.un = un
         self.neighbors = neighbors
         self.neighbors_simplices = simplices
@@ -201,7 +226,8 @@ class Face:
         self._dp1 = None
         self._sign = None
         self._omega = None
-        self._pqr = vector_nan
+        self._pqr = None
+        # self._pqr = vector_nan
         self._g = None
 
     def reset(self):
@@ -209,8 +235,8 @@ class Face:
         self._dp1 = None
         self._sign = None
         self._omega = None
-        self._pqr.fill(np.nan)
-        # self._pqr = None
+        # self._pqr.fill(np.nan)
+        self._pqr = None
         for edge in self.edges:
             edge.reset()
 
@@ -244,10 +270,11 @@ class Face:
     #     )
     #     "\n".join("%s:%s" % (k, v) for k, v in self.maze.items())
 
-    def _add_pqr(self, pqr: np.ndarray) -> None:
+    # def _add_pqr(self, pqr: np.ndarray) -> None:
+    def _add_pqr(self, pqr: np.ndarray | None) -> None:
         """ """
-        # if self._pqr is not None:
-        if not np.array_equal(self._pqr, vector_nan, equal_nan=True):
+        # if not np.array_equal(self._pqr, vector_nan, equal_nan=True):
+        if self._pqr is not None:
             self._pqr += pqr
         else:
             # self._pqr = deepcopy(pqr)
@@ -258,27 +285,41 @@ class Face:
 
         Warning points should already be sorted counterclockwise
         """
+        _points = np.insert(self.points, self.npoints, self.points[0], axis=0)
         _simplex = np.insert(self.simplex, self.npoints, self.simplex[0], axis=0)
         return [
-            Edge(self._polyhedron, s, self._get_twinface(s)) for s in pairwise(_simplex)
+            Edge(p, s, self._get_twinface(s))
+            for p, s in zip(pairwise(_points), pairwise(_simplex), strict=True)
         ]
+
+        # return [
+        #     Edge(self.polypoints, self.polynorm, p, s, self._get_twinface(s))
+        #     for p, s in zip(pairwise(_points), pairwise(_simplex))
+        # ]
+        # _simplex = np.insert(self.simplex, self.npoints, self.simplex[0], axis=0)
+        # return [
+        #     Edge(self._polyhedron, s, self._get_twinface(s))
+        #     for s in pairwise(_simplex)
+        # ]
 
     def _get_twinface(self, pair: tuple[int, int]) -> int:
         """find index of the face of the edge's twin."""
         contained = [all([p in s for p in pair]) for s in self.neighbors_simplices]
         return self.neighbors[contained][0]
 
-    def _get_dot_point1(self) -> None:
+    def _get_dot_point1(self, obs: np.ndarray) -> None:
         """scalar product of face's unit outward vector and vector OA,
         where
           O is the observation point
           A is the first corner of the face
 
-        observation points' coordinates are setup through Polyhedron instance
+        Note: observation points' coordinates are setup through Polyhedron instance
         """
         # use shifted origin
-        _ = self._polyhedron.points[self.simplex][0]
-        self._dp1 = np.dot(self.un, _)
+        # p1 = self._polyhedron.points[self.simplex][0]
+        # p1 = self.polypoints[self.simplex][0]
+        p1 = self.points[0] - obs
+        self._dp1 = np.dot(self.un, p1)
 
     def _get_sign(self) -> None:
         """sign of scalar product of face's unit outward vector and vector OA,
@@ -294,10 +335,10 @@ class Face:
         else:
             raise NotImplementedError("'dp1' is undefined")
 
-    def _get_omega(self) -> None:
+    def _get_omega(self, obs: np.ndarray) -> None:
         """compute solid angle 'omega' subtended by the face at the observation point
 
-        observation points' coordinates are setup through Polyhedron instance
+        Note: observation points' coordinates are setup through Polyhedron instance
         """
         if self._dp1 is None:
             raise NotImplementedError("'dp1' is undefined")
@@ -308,8 +349,10 @@ class Face:
             self._omega = 0
         else:
             w = 0
-            # shift origin
-            points = self._polyhedron.points[self.simplex]  # [p1,p2,p3]
+            # use shifted origin
+            # points = self._polyhedron.points[self.simplex]  # [p1,p2,p3]
+            # points = self.polypoints[self.simplex]  # [p1,p2,p3]
+            points = self.points - obs  # [p1,p2,p3]
             dots = np.dot(self.un, points.T)  # [un.p1, un.p2, un.p3]
             cross = [
                 cross_product(points[i], points[(i + 1) % self.npoints])
@@ -322,6 +365,7 @@ class Face:
 
             for i in range(self.npoints):
                 # finds the angle between planes O-p1-p2 and O-p2-p3,
+                # p1,p2,p3 are 3 points, taken in ccw order as seen from origin O
 
                 # Check if face is seen from inside
                 inout = dots[i]
@@ -330,11 +374,12 @@ class Face:
                     angle = 0
                     perp = 1
                 else:
-                    p = points[(i + 2) % self.npoints]
+                    p = points[(i + 2) % self.npoints]  # p3
                     # if inout>0: face seen from inside
                     if inout > 0:
                         n1, n2 = n2, n1
-                        p = points[i]
+                        p = points[i]  # p1
+
                     # sign of perp is negative if points are clockwise
                     perp = np.dot(p, n1)
                     r = np.dot(n1, n2)
@@ -345,35 +390,38 @@ class Face:
             w -= (self.npoints - 2) * np.pi
             self._omega = -self._sign * w
 
-    def _get_ccw_line_integrals(self) -> None:
+    def _get_ccw_line_integrals(self, obs: np.ndarray) -> None:
         """compute pqr for the current face
 
-        observation points' coordinates are setup through Polyhedron instance
+        Note: observation points' coordinates are setup through Polyhedron instance
         """
         for edge in self.edges:
-            edge._get_ccw_line_integrals()
+            edge._get_ccw_line_integrals(obs)
 
             self._add_pqr(edge.pqr)
 
-    def get_gravity(self, coord: np.ndarray, density: float, Gc: float) -> np.ndarray:
+    def get_gravity(self, obs: np.ndarray, density: float, Gc: float) -> np.ndarray:
         """compute gravity from the current face with density 'density' and
-        gravitational constant 'Gc' seen from the coordinates 'coord'
+        gravitational constant 'Gc' seen from the observation points
 
-        coord: observation point's coordinates
+        Note: observation points' coordinates are setup through Polyhedron instance
+
         density: []
         Gc: Gravitational constant []
         """
         # if distance to face is non-zero
-        self._get_dot_point1()
+        self._get_dot_point1(obs)
         self._get_sign()
-        self._get_omega()
-        self._get_ccw_line_integrals()
+        self._get_omega(obs)
+        self._get_ccw_line_integrals(obs)
 
         if self._dp1 is None:
             raise NotImplementedError("'dp1' is undefined")
         if self._omega is None:
             raise NotImplementedError("'omega' is undefined")
-        if np.array_equal(self._pqr, vector_nan, equal_nan=True):
+
+        # if np.array_equal(self._pqr, vector_nan, equal_nan=True):
+        if self._pqr is None:
             raise NotImplementedError("'pqr' is undefined")
 
         if self._dp1 != 0:
@@ -419,6 +467,7 @@ class Polyhedron:
 
         self.faces = self._get_faces()
         self.nfaces = len(self.faces)
+        # self._G = np.zeros(3)
         # self.edges = [e for f in self.faces for e in f.edges]
         # self.nedges = len(self.edges)
 
@@ -488,7 +537,10 @@ class Polyhedron:
 
             faces.append(
                 Face(
-                    self,  # Polyhedron instance
+                    # self,  # Polyhedron instance
+                    # self.points,  # Polyhedron instance
+                    # self._norm,  # Polyhedron instance
+                    points=hull.points[s],
                     simplex=s,
                     un=un,
                     neighbors=n,
@@ -531,7 +583,7 @@ class Polyhedron:
     def shift_origin(self, coord):
         """change points origin to 'coord'
 
-        return points - coord
+        return points = points - coord
         """
         self.points -= coord
 
@@ -576,7 +628,7 @@ class Polyhedron:
     def reset(self, coord):
         """reset origin and all parameters"""
         # shift back origin
-        self.reset_origin(coord)
+        # self.reset_origin(coord)
         for face in self.faces:
             face.reset()
 
@@ -591,13 +643,15 @@ class Polyhedron:
         """
 
         # setup G array, and shift back origin
-        G = self.setup(coord)
+        G = np.zeros(3)
+        # self.set_origin(coord)
 
         for face in self.faces:
             g = face.get_gravity(coord, density, Gc)
             G += g
 
         # reset intermediate variables, and shift back origin
+        # self.reset_origin(coord)
         self.reset(coord)
 
         return G

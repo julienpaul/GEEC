@@ -11,6 +11,20 @@ Program to calculate gravity and gravity gradients due to irregularly shaped bod
 - **Github repository**: <https://github.com/julienpaul/geec/>
 - **Documentation** <https://julienpaul.github.io/geec/>
 
+## Installation
+
+### Installation using Poetry
+
+- Install [Poetry](https://python-poetry.org/docs/#installation)
+
+- clone git repo:
+
+  ```shell
+  git clone https://github.com/julienpaul/geec.git
+  cd geec
+  poetry install
+  ```
+
 ## Getting started with your project
 
 First, create a repository on GitHub with the same name as this project, and then run the following commands:
@@ -23,7 +37,7 @@ git remote add origin git@github.com:julienpaul/geec.git
 git push -u origin main
 ```
 
-Finally, install the environment and the pre-commit hooks with 
+Finally, install the environment and the pre-commit hooks with
 
 ```bash
 make install
@@ -42,9 +56,9 @@ To enable the code coverage reports, see [here](https://fpgmaas.github.io/cookie
 ## Releasing a new version
 
 - Create an API Token on [Pypi](https://pypi.org/).
-- Add the API Token to your projects secrets with the name `PYPI_TOKEN` by visiting 
+- Add the API Token to your projects secrets with the name `PYPI_TOKEN` by visiting
 [this page](https://github.com/julienpaul/geec/settings/secrets/actions/new).
-- Create a [new release](https://github.com/julienpaul/geec/releases/new) on Github. 
+- Create a [new release](https://github.com/julienpaul/geec/releases/new) on Github.
 Create a new tag in the form ``*.*.*``.
 
 For more details, see [here](https://fpgmaas.github.io/cookiecutter-poetry/features/cicd/#how-to-trigger-a-release).

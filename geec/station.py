@@ -52,7 +52,10 @@ class Station:
         return ""
 
     def compute_gravity(
-        self, polyhedrons: list[Polyhedron] | Polyhedron, density: float, Gc: float
+        self,
+        polyhedrons: list[Polyhedron] | Polyhedron,
+        density: float,
+        Gc: float,
     ) -> None:
         """
         compute gravity from polyhedrons with density 'density' and

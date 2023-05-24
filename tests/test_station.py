@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# test_geec.py
+# test_station.py
 
 # --- import -----------------------------------
 # import from standard lib
@@ -31,7 +31,7 @@ class TestCube:
             # if i != 2:
             #     continue
             for j, edge in enumerate(face.edges):
-                edge._get_ccw_line_integrals()
+                edge._get_ccw_line_integrals(s.coord)
                 # assert np.array_equal(edge.pqr, np.array(expected.edge_pqr[i][j]))
                 assert np.allclose(
                     edge.pqr,  # type: ignore[attr-defined]
@@ -54,13 +54,13 @@ class TestCube:
         for i, face in enumerate(poly.faces):
             # if i != 2:
             #     continue
-            face._get_dot_point1()
+            face._get_dot_point1(s.coord)
             assert face._dp1 == expected.dp1[i]
             face._get_sign()
             assert face._sign == expected.sign[i]
-            face._get_omega()
+            face._get_omega(s.coord)
             assert face._omega == expected.omega[i]
-            face._get_ccw_line_integrals()
+            face._get_ccw_line_integrals(s.coord)
             # assert np.array_equal(face._pqr, np.array(expected.pqr[i]))
             assert np.allclose(
                 face._pqr,  # type: ignore[attr-defined]
