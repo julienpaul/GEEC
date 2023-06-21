@@ -89,6 +89,57 @@ def test():
     df.to_csv(filepath, index=False)
 
 
+@app.command()
+def test_grad():
+    cube = [
+        (-0.5, -0.5, 0.0),
+        (0.5, -0.5, 0.0),
+        (0.5, 0.5, 0.0),
+        (-0.5, 0.5, 0.0),
+        (-0.5, -0.5, -1.0),
+        (0.5, -0.5, -1.0),
+        (0.5, 0.5, -1.0),
+        (-0.5, 0.5, -1.0),
+    ]
+
+    points = np.array(cube)
+    p = Polyhedron(points)
+
+    density = 1000
+    Gc = 6.67408e-11
+    # obs = np.array([-1.05, -1.05, 0])
+
+    # Start, End and Step
+    x_start, x_end, x_step = -1.05, 1.06, 0.1
+    y_start, y_end, y_step = -1.05, 1.06, 0.1
+    z_start, z_end, z_step = 0, 1, 1
+
+    g = np.mgrid[x_start:x_end:x_step, y_start:y_end:y_step, z_start:z_end:z_step]
+    listObs = np.transpose(g.reshape(len(g), -1))
+
+    def add_gravity(row):
+        s = Station(np.array(row))
+        s.compute_gravity(p, density, Gc, gradient=True)
+        listG = s.G
+        listT = s.T.flatten()[
+            [0, 1, 2, 4, 5, 8]
+        ]  # "txx", "txy", "txz", "tyy", "tyz", "tzz"
+        return np.concatenate([listG, listT])
+
+    # create dataframe
+    df = pd.DataFrame(listObs, columns=["x_mes", "y_mes", "z_mes"])
+    # df[["Gx", "Gy", "Gz"]] = df.apply(add_gravity, axis=1, result_type="expand")
+
+    listGT = np.apply_along_axis(add_gravity, axis=1, arr=listObs)
+    df[["Gx", "Gy", "Gz", "txx", "txy", "txz", "tyy", "tyz", "tzz"]] = listGT
+
+    # Save result in csv file
+    filepath = Path(__file__)
+    filepath = filepath.parent.parent / "output" / "out_gradient.csv"
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(filepath, index=False)
+
+
 def main():
     from geec import timing  # noqa: F401
 

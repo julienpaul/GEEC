@@ -28,7 +28,7 @@ from scipy.optimize import linprog
 from scipy.spatial import ConvexHull
 
 # import from my project
-from geec.utils import cross_product  # , vector_nan
+from geec.utils import cross_product, epsilon, minus_identity  # , vector_nan
 
 
 class Edge:
@@ -66,17 +66,19 @@ class Edge:
         # self._norm = self._polyhedron._norm[self._simplex]
         self.start = self.points[0]
         self.end = self.points[1]
-        self.vector = self.end - self.start
-        self.length = np.linalg.norm(self.vector)
+        self.vector = self.end - self.start  # Lj
+        self.length = np.linalg.norm(self.vector)  # lj
         self._twinface = twinface
         self._twin = None
         # depending on the station, will be computed later
         # self._pqr = vector_nan
         self._pqr = None
+        self._dpqr = None
 
     def reset(self):
         """reset value for future computing"""
         self._pqr = None
+        self._dpqr = None
         # self._pqr.fill(np.nan)
 
     def __rich_repr__(self):
@@ -97,6 +99,10 @@ class Edge:
     def pqr(self) -> np.ndarray | None:
         return self._pqr
 
+    @property
+    def dpqr(self) -> np.ndarray | None:
+        return self._dpqr
+
     def set_twin(self, twin) -> None:
         """set up the twin of the edge
 
@@ -115,68 +121,179 @@ class Edge:
         else:
             raise TypeError("'pqr' must be numpy array")
 
-    # def _set_twin_pqr(self, pqr: np.ndarray) -> None:
-    def _set_twin_pqr(self, pqr: np.ndarray | None) -> None:
+    def _set_dpqr(self, dpqr: np.ndarray | None) -> None:
+        if isinstance(dpqr, np.ndarray):
+            self._dpqr = dpqr
+        else:
+            raise TypeError("'dpqr' must be numpy array")
+
+    # def _set_twin_pqr(self, pqr: np.ndarray | None, dpqr: np.ndarray | None) -> None:
+    def _set_twin_pqr(self) -> None:
+        """assign value to twin edge
+
+        Note: twins have opposite values.
+        """
         if isinstance(self._twin, Edge):
             twin = self._twin
-            twin._set_pqr(pqr)
+            if self._pqr is not None:
+                twin._set_pqr(-self._pqr)
+            if self._dpqr is not None:
+                twin._set_dpqr(-self._dpqr)
         else:
             raise TypeError("'twin' undefined")
 
-    def _get_ccw_line_integrals(self, obs: np.ndarray) -> None:
+    # def _get_ccw_line_integrals(self, obs: np.ndarray) -> None:
+    #    """
+    #    compute the line integral of vectors (i/r), (j/r), (k/r),
+    #    taken around the egde of the polygon in a counterclockwise direction
+
+    #    Note: observation points' coordinates are setup through Polyhedron instance
+    #    """
+    #    # if np.array_equal(self._pqr, vector_nan, equal_nan=True):
+    #    if self._pqr is None:
+    #        integral = 0
+    #        # use shifted coordinates, see Polyhedron.get_gravity
+    #        p1, p2 = (self.points[0] - obs, self.points[1] - obs)
+    #        n1, n2 = (np.linalg.norm(p1), np.linalg.norm(p2))
+    #        # n1, n2 = (
+    #        #     self.polynorm[self._simplex][0],
+    #        #     self.polynorm[self._simplex][1],
+    #        # )
+    #        # p1, p2 = (
+    #        #     self.polypoints[self._simplex][0],
+    #        #     self.polypoints[self._simplex][1],
+    #        # )
+    #        # p1, p2 = (
+    #        #     self._polyhedron.points[self._simplex][0],
+    #        #     self._polyhedron.points[self._simplex][1],
+    #        # )
+    #        # n1, n2 = (
+    #        #     self._polyhedron._norm[self._simplex][0],
+    #        #     self._polyhedron._norm[self._simplex][1],
+    #        # )
+    #        chsgn = 1  # if origin,p1 & p2 are on a st line
+    #        r1 = n1
+    #        if n1 > n2 and np.dot(p1, p2) / (n1 * n2) == 1:  # p1 farther than p2
+    #            p1, p2 = p2, p1  # interchange p1,p2
+    #            chsgn = -1
+    #            r1 = n2
+
+    #        V = self.vector
+    #        L = self.length
+
+    #        L2 = L * L
+    #        b = 2 * np.dot(V, p1)
+    #        r12 = r1 * r1
+    #        b2 = b / L / 2
+    #        if r1 + b2 == 0:
+    #            V, b = -V, -b
+    #            b2 = b / L / 2
+
+    #        if r1 + b2 != 0:
+    #            integral = math.log((math.sqrt(L2 + b + r12) + L + b2) / (r1 + b2)) / L
+
+    #        # change sign of I if p1,p2 were interchanged
+    #        self._pqr = integral * chsgn * V
+    #        # assign twin value
+    #        self._set_twin_pqr(-self._pqr)
+
+    def _line_integral_along_edge(
+        self,
+        cj: float,
+        Lj: np.ndarray,
+        lj: float,
+        Rj: np.ndarray,
+        rj: float,
+        b2: float,
+        bj: float,
+        gradient: bool = False,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Line integral along edge"""
+        Ll = Lj / lj
+        Rr = 0
+        u, v = 0, 0
+        DU, DV = 0, 0
+        if cj != 0:
+            # observation point and edge are not in line
+            l2 = lj * lj
+            r2 = rj * rj
+            sqrt = math.sqrt(l2 + bj + r2)
+
+            t = (sqrt + lj + b2) / cj
+
+            integral = math.log(t)
+
+        else:
+            # observation point and edge are in line
+            t = abs(lj - rj) / rj
+
+            integral = math.log(t)
+
+        pqr = integral * Ll
+
+        if gradient:
+            Rr = Rj / rj
+
+            if cj != 0:
+                u = t * cj
+                v = cj
+                DU = -((Lj + Rj) / sqrt + Ll)
+                DV = -(Rr + Ll)
+
+            else:
+                u = abs(lj - rj)
+                v = rj
+                DU = ((lj - rj) / u) * Rr
+                DV = -Rr
+
+            DT = (v * DU - u * DV) / (v * v)
+            DPQR = Ll * (DT / t)[:, np.newaxis]
+        else:
+            DPQR = None
+
+        return (pqr, DPQR)
+
+    def _get_ccw_line_integrals(self, obs: np.ndarray, gradient: bool = False) -> None:
         """
         compute the line integral of vectors (i/r), (j/r), (k/r),
         taken around the egde of the polygon in a counterclockwise direction
 
         Note: observation points' coordinates are setup through Polyhedron instance
         """
-        # if np.array_equal(self._pqr, vector_nan, equal_nan=True):
         if self._pqr is None:
-            integral = 0
             # use shifted coordinates, see Polyhedron.get_gravity
-            p1, p2 = (self.points[0] - obs, self.points[1] - obs)
-            n1, n2 = (np.linalg.norm(p1), np.linalg.norm(p2))
-            # n1, n2 = (
-            #     self.polynorm[self._simplex][0],
-            #     self.polynorm[self._simplex][1],
-            # )
-            # p1, p2 = (
-            #     self.polypoints[self._simplex][0],
-            #     self.polypoints[self._simplex][1],
-            # )
-            # p1, p2 = (
-            #     self._polyhedron.points[self._simplex][0],
-            #     self._polyhedron.points[self._simplex][1],
-            # )
-            # n1, n2 = (
-            #     self._polyhedron._norm[self._simplex][0],
-            #     self._polyhedron._norm[self._simplex][1],
-            # )
+            R1, R2 = (self.points[0] - obs, self.points[1] - obs)
+            r1, r2 = (np.linalg.norm(R1), np.linalg.norm(R2))
+
             chsgn = 1  # if origin,p1 & p2 are on a st line
-            r1 = n1
-            if n1 > n2 and np.dot(p1, p2) / (n1 * n2) == 1:  # p1 farther than p2
-                p1, p2 = p2, p1  # interchange p1,p2
+            if r1 > r2 and np.dot(R1, R2) / (r1 * r2) == 1:  # p1 farther than p2
+                R1 = R2  # interchange p1,p2
+                r1 = r2
                 chsgn = -1
-                r1 = n2
 
-            V = self.vector
-            L = self.length
+            Lj = self.vector
+            lj = self.length
 
-            L2 = L * L
-            b = 2 * np.dot(V, p1)
-            r12 = r1 * r1
-            b2 = b / L / 2
+            # bj = 2 Rj.Lj
+            bj = 2 * np.dot(R1, Lj)
+            b2 = bj / lj / 2
             if r1 + b2 == 0:
-                V, b = -V, -b
-                b2 = b / L / 2
+                # observation point and edge are in line
+                Lj, bj = -Lj, -bj
+                b2 = bj / lj / 2
 
-            if r1 + b2 != 0:
-                integral = math.log((math.sqrt(L2 + b + r12) + L + b2) / (r1 + b2)) / L
+            # cj = R1 + bj/(2*lj)
+            cj = r1 + b2
+
+            (pqr, dpqr) = self._line_integral_along_edge(
+                cj, Lj, lj, R1, r1, b2, bj, gradient
+            )
 
             # change sign of I if p1,p2 were interchanged
-            self._pqr = integral * chsgn * V
+            self._pqr = pqr * chsgn
+            self._dpqr = dpqr
             # assign twin value
-            self._set_twin_pqr(-self._pqr)
+            self._set_twin_pqr()
 
 
 class Face:
@@ -226,7 +343,9 @@ class Face:
         self._dp1 = None
         self._sign = None
         self._omega = None
+        self._domega = None
         self._pqr = None
+        self._dpqr = None
         # self._pqr = vector_nan
         self._g = None
 
@@ -235,8 +354,10 @@ class Face:
         self._dp1 = None
         self._sign = None
         self._omega = None
+        self._domega = None
         # self._pqr.fill(np.nan)
         self._pqr = None
+        self._dpqr = None
         for edge in self.edges:
             edge.reset()
 
@@ -280,6 +401,13 @@ class Face:
             # self._pqr = deepcopy(pqr)
             self._pqr = pqr
 
+    def _add_dpqr(self, dpqr: np.ndarray | None) -> None:
+        """ """
+        if self._dpqr is not None:
+            self._dpqr += dpqr
+        else:
+            self._dpqr = dpqr
+
     def _get_edges(self) -> list[Edge]:
         """set up edges of the face
 
@@ -304,7 +432,7 @@ class Face:
 
     def _get_twinface(self, pair: tuple[int, int]) -> int:
         """find index of the face of the edge's twin."""
-        contained = [all([p in s for p in pair]) for s in self.neighbors_simplices]
+        contained = [all(p in s for p in pair) for s in self.neighbors_simplices]
         return self.neighbors[contained][0]
 
     def _get_dot_point1(self, obs: np.ndarray) -> None:
@@ -335,8 +463,8 @@ class Face:
         else:
             raise NotImplementedError("'dp1' is undefined")
 
-    def _get_omega(self, obs: np.ndarray) -> None:
-        """compute solid angle 'omega' subtended by the face at the observation point
+    def _get_omega(self, obs: np.ndarray, gradient: bool = False) -> None:
+        """compute solid angle subtended by the face at the observation point
 
         Note: observation points' coordinates are setup through Polyhedron instance
         """
@@ -345,13 +473,9 @@ class Face:
         if self._sign is None:
             raise NotImplementedError("'sign' is undefined")
 
-        if abs(self._dp1) == 0:
-            self._omega = 0
-        else:
-            w = 0
-            # use shifted origin
-            # points = self._polyhedron.points[self.simplex]  # [p1,p2,p3]
-            # points = self.polypoints[self.simplex]  # [p1,p2,p3]
+        self._omega = 0
+        self._domega = np.zeros(3)
+        if abs(self._dp1) > epsilon:
             points = self.points - obs  # [p1,p2,p3]
             dots = np.dot(self.un, points.T)  # [un.p1, un.p2, un.p3]
             cross = [
@@ -359,50 +483,260 @@ class Face:
                 for i in range(self.npoints)
             ]  # [p1xp2, p2xp3, p3xp1]
             norm = np.linalg.norm(cross, axis=1)
-            norm = norm[np.newaxis, :]
             # unit cross vector
-            unitv = cross / norm.T
+            unitv = cross / norm[:, np.newaxis]  # [A1, A2, A3]
 
+            if gradient:
+                # [[p1 x dpx, p1 x dpy, p1 x dpz],[p2 x dpx,...],...]
+                cross_dp = cross_product(points, minus_identity)
+
+            w = 0
+            dw = 0
             for i in range(self.npoints):
-                # finds the angle between planes O-p1-p2 and O-p2-p3,
-                # p1,p2,p3 are 3 points, taken in ccw order as seen from origin O
-
-                # Check if face is seen from inside
                 inout = dots[i]
-                n1, n2 = -unitv[i], unitv[(i + 1) % self.npoints]
-                if inout == 0:
-                    angle = 0
-                    perp = 1
-                else:
-                    p = points[(i + 2) % self.npoints]  # p3
-                    # if inout>0: face seen from inside
-                    if inout > 0:
-                        n1, n2 = n2, n1
-                        p = points[i]  # p1
+                (A1, A2) = self._get_A1A2(i, inout, unitv)
+                perp = self._get_perp(i, inout, points, A1)
+                b = self._get_b(A1, A2)
 
-                    # sign of perp is negative if points are clockwise
-                    perp = np.dot(p, n1)
-                    r = np.dot(n1, n2)
-                    angle = math.acos(r)
-                    if perp < 0:
-                        angle = 2 * np.pi - angle
-                    w += angle
+                angle = self._get_angle(i, inout, b, perp)
+                w += angle
+                if gradient:
+                    dangle = self._get_dangle(
+                        i, inout, b, perp, A1, A2, cross_dp, cross, norm
+                    )
+                    dw += dangle
+
             w -= (self.npoints - 2) * np.pi
             self._omega = -self._sign * w
+            self._domega = -self._sign * dw
 
-    def _get_ccw_line_integrals(self, obs: np.ndarray) -> None:
+    def _get_A1A2(
+        self, i: int, inout: float, unitv: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """ """
+        A1, A2 = -unitv[i], unitv[(i + 1) % self.npoints]
+        if inout > 0:
+            A1, A2 = A2, A1
+        return (A1, A2)
+
+    def _get_perp(
+        self, i: int, inout: float, points: np.ndarray, A1: np.ndarray
+    ) -> float:
+        """ """
+        # Check if face is seen from inside
+        if inout == 0:
+            perp = 1
+        else:
+            p3 = points[(i + 2) % self.npoints]  # p3
+            # if inout>0: face seen from inside
+            if inout > 0:
+                p3 = points[i]  # p1
+
+            # sign of perp is negative if points are clockwise
+            perp = np.dot(p3, A1)
+
+        return perp
+
+    def _get_b(self, A1: np.ndarray, A2: np.ndarray) -> float:
+        b = np.dot(A1, A2)
+        return b
+
+    def _get_angle(self, i: int, inout: float, b: float, perp: float) -> float:
+        if inout == 0:
+            angle = 0
+        else:
+            angle = math.acos(b)
+            if perp < 0:
+                angle = 2 * np.pi - angle
+        return angle
+
+    def _get_dangle(
+        self,
+        i: int,
+        inout: float,
+        b: float,
+        perp: float,
+        A1: np.ndarray,
+        A2: np.ndarray,
+        cross_dp: np.ndarray,
+        cross: list[np.ndarray],
+        norm: np.ndarray,
+    ) -> float:
+        dangle = 0
+
+        cdp1, cdp2, cdp3 = (
+            -cross_dp[i],
+            cross_dp[(i + 1) % self.npoints],
+            -cross_dp[(i + 2) % self.npoints],
+        )
+
+        V1, V2 = -cross[i], cross[(i + 1) % self.npoints]
+        v1, v2 = norm[i], norm[(i + 1) % self.npoints]
+
+        if inout > 0:
+            cdp1, cdp3 = cdp3, cdp1
+            V1, V2 = V2, V1
+            v1, v2 = v2, v1
+
+        # cdp1 = cross_product(minus_identity, p1)
+        # cdp2 = cross_product(minus_identity, p2)
+        # cdp3 = cross_product(minus_identity, p3)
+
+        dV1 = cdp1 + cdp2
+        dV2 = cdp3 + cdp2
+
+        dv1 = np.dot(dV1, V1) / v1
+        dv2 = np.dot(dV2, V2) / v2
+
+        DA1 = (dV1 * v1 - V1 * dv1[:, np.newaxis]) / (v1 * v1)
+        DA2 = (dV2 * v2 - V2 * dv2[:, np.newaxis]) / (v2 * v2)
+
+        DB = np.dot(DA1, A2) + np.dot(DA2, A1)
+        denom = math.sqrt(1 - b * b)
+
+        if denom != 0:
+            dangle = -DB / denom
+            if perp < 0:
+                dangle = -dangle
+
+        return dangle
+
+    # def _get_omega(self, obs: np.ndarray, gradient: bool = False) -> None:
+    #     """compute solid angle 'omega' subtended by the face at the observation point
+
+    #     Note: observation points' coordinates are setup through Polyhedron instance
+    #     """
+    #     if self._dp1 is None:
+    #         raise NotImplementedError("'dp1' is undefined")
+    #     if self._sign is None:
+    #         raise NotImplementedError("'sign' is undefined")
+    #     # if self._domega is None:
+    #     self._omega = 0
+    #     self._domega = np.zeros(3)
+
+    #     # if abs(self._dp1) == 0:
+    #     # if self._dp1 == 0:
+    #     #     self._omega = 0
+    #     #     # self._domega = np.zeros(3)
+    #     # else:
+    #     # if self._dp1 != 0:
+    #     if abs(self._dp1) > epsilon:
+    #         w = 0
+    #         # use shifted origin
+    #         # points = self._polyhedron.points[self.simplex]  # [p1,p2,p3]
+    #         # points = self.polypoints[self.simplex]  # [p1,p2,p3]
+    #         points = self.points - obs  # [p1,p2,p3]
+    #         dots = np.dot(self.un, points.T)  # [un.p1, un.p2, un.p3]
+    #         cross = [
+    #             cross_product(points[i], points[(i + 1) % self.npoints])
+    #             for i in range(self.npoints)
+    #         ]  # [p1xp2, p2xp3, p3xp1]
+    #         norm = np.linalg.norm(cross, axis=1)
+    #         # norm = norm[np.newaxis, :]
+    #         # unit cross vector
+    #         # unitv = cross / norm.T  # [A1, A2, A3]
+    #         unitv = cross / norm[:, np.newaxis]  # [A1, A2, A3]
+
+    #         if gradient:
+    #             # [[p1 x dpx, p1 x dpy, p1 x dpz],[p2 x dpx,...],...]
+    #             cross_dp = cross_product(points, minus_identity)
+    #             # cross_dp = np.array(
+    #             #     [
+    #             #         [cross_product(points[i], minus_identity[j]) for j in range(3)]
+    #             #         for i in range(3)
+    #             #     ]
+    #             # )
+
+    #         for i in range(self.npoints):
+    #             # finds the angle between planes O-p1-p2 and O-p2-p3,
+    #             # p1,p2,p3 are 3 points, taken in ccw order as seen from origin O
+
+    #             # Check if face is seen from inside
+    #             inout = dots[i]
+    #             A1, A2 = -unitv[i], unitv[(i + 1) % self.npoints]
+    #             b = np.dot(A1, A2)
+    #             if inout == 0:
+    #                 angle = 0
+    #                 perp = 1
+    #             else:
+    #                 p3 = points[(i + 2) % self.npoints]  # p3
+    #                 # if inout>0: face seen from inside
+    #                 if inout > 0:
+    #                     A1, A2 = A2, A1
+    #                     p3 = points[i]  # p1
+    #                     # p1, p3 = p3, p1
+
+    #                 # sign of perp is negative if points are clockwise
+    #                 perp = np.dot(p3, A1)
+    #                 angle = math.acos(b)
+    #                 # print(f"perp: {perp, p3, A1}")
+    #                 if perp < 0:
+    #                     angle = 2 * np.pi - angle
+    #                 # print(f"angle: {angle}")
+    #                 w += angle
+
+    #             if gradient:
+    #                 dw = 0
+
+    #                 cdp1, cdp2, cdp3 = (
+    #                     -cross_dp[i],
+    #                     cross_dp[(i + 1) % self.npoints],
+    #                     -cross_dp[(i + 2) % self.npoints],
+    #                 )
+
+    #                 V1, V2 = -cross[i], cross[(i + 1) % self.npoints]
+    #                 v1, v2 = norm[i], norm[(i + 1) % self.npoints]
+
+    #                 if inout > 0:
+    #                     cdp1, cdp3 = cdp3, cdp1
+    #                     V1, V2 = V2, V1
+    #                     v1, v2 = v2, v1
+
+    #                 # cdp1 = cross_product(minus_identity, p1)
+    #                 # cdp2 = cross_product(minus_identity, p2)
+    #                 # cdp3 = cross_product(minus_identity, p3)
+
+    #                 dV1 = cdp1 + cdp2
+    #                 dV2 = cdp3 + cdp2
+
+    #                 dv1 = np.dot(dV1, V1) / v1
+    #                 dv2 = np.dot(dV2, V2) / v2
+
+    #                 DA1 = (dV1 * v1 - V1 * dv1[:, np.newaxis]) / (v1 * v1)
+    #                 DA2 = (dV2 * v2 - V2 * dv2[:, np.newaxis]) / (v2 * v2)
+
+    #                 DB = np.dot(DA1, A2) + np.dot(DA2, A1)
+    #                 denom = math.sqrt(1 - b * b)
+
+    #                 if denom != 0:
+    #                     dw = -DB / denom
+    #                     if perp < 0:
+    #                         dw = -dw
+
+    #                 self._domega += dw
+
+    #         w -= (self.npoints - 2) * np.pi
+    #         self._omega = -self._sign * w
+    #         self._domega = -self._sign * self._domega
+
+    def _get_ccw_line_integrals(self, obs: np.ndarray, gradient: bool = False) -> None:
         """compute pqr for the current face
 
         Note: observation points' coordinates are setup through Polyhedron instance
         """
         for edge in self.edges:
-            edge._get_ccw_line_integrals(obs)
-
+            # edge._get_ccw_line_integrals(obs)
+            edge._get_ccw_line_integrals(obs, gradient)
             self._add_pqr(edge.pqr)
+            self._add_dpqr(edge.dpqr)
 
-    def get_gravity(self, obs: np.ndarray, density: float, Gc: float) -> np.ndarray:
+    def get_gravity(
+        self, obs: np.ndarray, density: float, Gc: float, gradient: bool = False
+    ) -> np.ndarray:
         """compute gravity from the current face with density 'density' and
         gravitational constant 'Gc' seen from the observation points
+
+        calculate gravity in mGal unit and gravity gradient in E
 
         Note: observation points' coordinates are setup through Polyhedron instance
 
@@ -412,31 +746,85 @@ class Face:
         # if distance to face is non-zero
         self._get_dot_point1(obs)
         self._get_sign()
-        self._get_omega(obs)
-        self._get_ccw_line_integrals(obs)
+        self._get_omega(obs, gradient)
+        self._get_ccw_line_integrals(obs, gradient)
 
         if self._dp1 is None:
             raise NotImplementedError("'dp1' is undefined")
         if self._omega is None:
             raise NotImplementedError("'omega' is undefined")
+        if self._domega is None:
+            raise NotImplementedError("'domega' is undefined")
 
         # if np.array_equal(self._pqr, vector_nan, equal_nan=True):
         if self._pqr is None:
             raise NotImplementedError("'pqr' is undefined")
+        if gradient and self._dpqr is None:
+            raise NotImplementedError("'dpqr' is undefined")
 
-        if self._dp1 != 0:
-            (L, M, N) = self.un
-            (P, Q, R) = self._pqr
+        factor = -density * Gc * 1e5
+        (L, M, N) = self.un
+        (P, Q, R) = self._pqr
 
-            factor = -density * Gc * self._dp1 * 1e5
-            gx = (L * self._omega + N * Q - M * R) * factor
-            gy = (M * self._omega + L * R - N * P) * factor
-            gz = (N * self._omega + M * P - L * Q) * factor
-        else:
-            gx, gy, gz = 0, 0, 0
+        # if self._dp1 != 0:
+        _gx = L * self._omega + N * Q - M * R
+        _gy = M * self._omega + L * R - N * P
+        _gz = N * self._omega + M * P - L * Q
+        gx = self._dp1 * factor * _gx
+        gy = self._dp1 * factor * _gy
+        gz = self._dp1 * factor * _gz
+        # else:
+        #     gx, gy, gz = 0, 0, 0
 
         self._g = np.array([gx, gy, gz])
-        return self._g
+
+        if gradient:
+            px, qx, rx = self._dpqr[0]
+            py, qy, ry = self._dpqr[1]
+            pz, qz, rz = self._dpqr[2]
+
+            # derivative value
+            dux, duy, duz = -self.un
+
+            factor = factor * 1e4  # -density * Gc * 1e9
+            txx = factor * (
+                self._dp1 * (L * self._domega[0] + N * qx - M * rx) + dux * _gx
+            )
+            txy = factor * (
+                self._dp1 * (L * self._domega[1] + N * qy - M * ry) + duy * _gx
+            )
+            txz = factor * (
+                self._dp1 * (L * self._domega[2] + N * qz - M * rz) + duz * _gx
+            )
+
+            # tyx = txy
+            # tyx = factor * (
+            #     self._dp1 * (M * self._domega[0] + L * rx - N * px) + dux * _gy
+            # )
+            tyy = factor * (
+                self._dp1 * (M * self._domega[1] + L * ry - N * py) + duy * _gy
+            )
+            tyz = factor * (
+                self._dp1 * (M * self._domega[2] + L * rz - N * pz) + duz * _gy
+            )
+
+            # tzx =txz
+            # tzx = factor * (
+            #     self._dp1 * (N * self._domega[0] + M * px - L * qx) + dux * _gz
+            # )
+            # tzy =tyz
+            # tzy = factor * (
+            #     self._dp1 * (N * self._domega[1] + M * py - L * qy) + duy * _gz
+            # )
+            tzz = factor * (
+                self._dp1 * (N * self._domega[2] + M * pz - L * qz) + duz * _gz
+            )
+
+            self._tensor = np.array([[txx, txy, txz], [txy, tyy, tyz], [txz, tyz, tzz]])
+        else:
+            self._tensor = np.zeros(3)
+
+        return (self._g, self._tensor)
 
 
 class Polyhedron:
@@ -518,12 +906,9 @@ class Polyhedron:
                 if _niter > 10:
                     raise RuntimeError("Too many iteration to find point inside hull")
 
-            if dot > 0:
-                # A,B,C are not counterclockwise
-                ccw = False
-            else:
-                # A,B,C are already counterclockwise
-                ccw = True
+            # dot > 0: A,B,C are not counterclockwise
+            # dot < 0: A,B,C are already counterclockwise
+            ccw = not dot > 0
 
             # compute unit outward vector
             norm = np.linalg.norm(cross)
@@ -632,7 +1017,9 @@ class Polyhedron:
         for face in self.faces:
             face.reset()
 
-    def get_gravity(self, coord: np.ndarray, density: float, Gc: float) -> np.ndarray:
+    def get_gravity(
+        self, coord: np.ndarray, density: float, Gc: float, gradient: bool = False
+    ) -> np.ndarray:
         """
         compute gravity from polyhedron with density 'density' and
         gravitational constant 'Gc' seen from the coordinates 'coord'
@@ -640,21 +1027,24 @@ class Polyhedron:
         coord: observation point's coordinates
         density: []
         Gc: Gravitational constant []
+        gradient: optionaly compue gradient gravity fields
         """
 
         # setup G array, and shift back origin
         G = np.zeros(3)
         # self.set_origin(coord)
+        T = np.zeros((3, 3))
 
         for face in self.faces:
-            g = face.get_gravity(coord, density, Gc)
+            (g, t) = face.get_gravity(coord, density, Gc, gradient)
             G += g
+            T += t
 
         # reset intermediate variables, and shift back origin
         # self.reset_origin(coord)
         self.reset(coord)
 
-        return G
+        return (G, T)
 
     def plot(self):
         """plot 3D view of the polyhedron in the browser"""

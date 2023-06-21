@@ -188,5 +188,45 @@ from geec.cli import app
 def f1():
     runner = CliRunner()
     result = runner.invoke(app, "test")
+def f2():
+    runner = CliRunner()
+    result = runner.invoke(app, "test-grad")
 """
-timeit.timeit("f1()", setup=setup, number=100)
+# timeit.timeit("f1()", setup=setup, number=100)
+print("%.2f usec/pass" % (1000 * timeit.timeit("f1()", setup=setup, number=100) / 100))
+
+setup = """
+import numpy as np
+arr=np.random.rand(3)
+def f1(arr):
+    n1 = arr / 2.5
+
+def f2(arr):
+    n1 = np.zeros(3)
+def f3(arr):
+    n1 = np.zeros((3,3))
+def f4(arr):
+    n1 = 0
+def f5(arr):
+    n1 = None
+"""
+timeit.timeit("f1(arr)", setup=setup)
+
+setup = """
+import numpy as np
+arr=np.random.rand(3)
+def f1(arr):
+    n1 = len(arr)
+def f2(arr):
+    n1 = arr.size
+"""
+timeit.timeit("f1(arr)", setup=setup, number=10000000)
+
+setup = """
+import numpy as np
+def f1():
+    n1 = np.diag(np.full(3, -1))
+def f2():
+    n1 = - np.identity(3)
+"""
+timeit.timeit("f1()", setup=setup)

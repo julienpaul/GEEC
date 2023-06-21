@@ -41,6 +41,7 @@ class Station:
 
         self.coord = coord
         self.G = np.zeros(3)
+        self.T = np.zeros((3, 3))
 
     def __rich_repr__(self):
         yield "coord", self.coord
@@ -56,6 +57,7 @@ class Station:
         polyhedrons: list[Polyhedron] | Polyhedron,
         density: float,
         Gc: float,
+        gradient: bool = False,
     ) -> None:
         """
         compute gravity from polyhedrons with density 'density' and
@@ -77,7 +79,9 @@ class Station:
             raise TypeError("polyhedrons should be of type Polyhedron")
 
         for poly in polyhedrons:
-            self.G += poly.get_gravity(self.coord, density, Gc)
+            (G, T) = poly.get_gravity(self.coord, density, Gc, gradient)
+            self.G += G
+            self.T += T
 
 
 if __name__ == "__main__":
@@ -98,8 +102,11 @@ if __name__ == "__main__":
     density = 1000
     Gc = 6.67408e-11
     obs = np.array([-1.05, -1.05, 0])
+    gradient = True
 
     s = Station(obs)
-    s.compute_gravity(p, density, Gc)
+    s.compute_gravity(p, density, Gc, gradient=gradient)
 
-    print(f"Gravity[{obs}]={s.G}")
+    print(f"Gravity[{obs}]: \n{s.G}")
+    if gradient:
+        print(f"Gravity gradient[{obs}]: \n{s.T}")
