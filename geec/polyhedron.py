@@ -17,18 +17,25 @@
 
 # --- import -----------------------------------
 # import from standard lib
-import math
 from itertools import pairwise
+from math import acos, log, sqrt
+from pathlib import Path
 
 # import from other lib
 import numpy as np
+import pandas as pd
 from loguru import logger
+from numba import jit
 from rich.pretty import pprint as rprint
 from scipy.optimize import linprog
 from scipy.spatial import ConvexHull
 
 # import from my project
-from geec.utils import cross_product, epsilon, minus_identity  # , vector_nan
+from geec.utils import (
+    cross_product,
+    epsilon,
+    minus_identity,
+)
 
 
 class Edge:
@@ -44,9 +51,6 @@ class Edge:
 
     def __init__(
         self,
-        # polyhedron: "Polyhedron",
-        # polypoints: np.ndarray,
-        # polynorm: np.ndarray,
         points: tuple[np.ndarray, np.ndarray],
         simplex: tuple[np.ndarray, np.ndarray],
         twinface: int,
@@ -57,13 +61,8 @@ class Edge:
         twinface: index of the face containing the edge's twin
         """
         logger.trace("initialise Edge")
-        # self._polyhedron = polyhedron
-        # self.polypoints = polypoints
-        # self.polynorm = polynorm
         self._simplex = np.array(simplex)
-        # self.points = self._polyhedron.points[self._simplex]
         self.points = points
-        # self._norm = self._polyhedron._norm[self._simplex]
         self.start = self.points[0]
         self.end = self.points[1]
         self.vector = self.end - self.start  # Lj
@@ -71,7 +70,6 @@ class Edge:
         self._twinface = twinface
         self._twin = None
         # depending on the station, will be computed later
-        # self._pqr = vector_nan
         self._pqr = None
         self._dpqr = None
 
@@ -79,7 +77,6 @@ class Edge:
         """reset value for future computing"""
         self._pqr = None
         self._dpqr = None
-        # self._pqr.fill(np.nan)
 
     def __rich_repr__(self):
         """rich pretty print fields"""
@@ -142,63 +139,9 @@ class Edge:
         else:
             raise TypeError("'twin' undefined")
 
-    # def _get_ccw_line_integrals(self, obs: np.ndarray) -> None:
-    #    """
-    #    compute the line integral of vectors (i/r), (j/r), (k/r),
-    #    taken around the egde of the polygon in a counterclockwise direction
-
-    #    Note: observation points' coordinates are setup through Polyhedron instance
-    #    """
-    #    # if np.array_equal(self._pqr, vector_nan, equal_nan=True):
-    #    if self._pqr is None:
-    #        integral = 0
-    #        # use shifted coordinates, see Polyhedron.get_gravity
-    #        p1, p2 = (self.points[0] - obs, self.points[1] - obs)
-    #        n1, n2 = (np.linalg.norm(p1), np.linalg.norm(p2))
-    #        # n1, n2 = (
-    #        #     self.polynorm[self._simplex][0],
-    #        #     self.polynorm[self._simplex][1],
-    #        # )
-    #        # p1, p2 = (
-    #        #     self.polypoints[self._simplex][0],
-    #        #     self.polypoints[self._simplex][1],
-    #        # )
-    #        # p1, p2 = (
-    #        #     self._polyhedron.points[self._simplex][0],
-    #        #     self._polyhedron.points[self._simplex][1],
-    #        # )
-    #        # n1, n2 = (
-    #        #     self._polyhedron._norm[self._simplex][0],
-    #        #     self._polyhedron._norm[self._simplex][1],
-    #        # )
-    #        chsgn = 1  # if origin,p1 & p2 are on a st line
-    #        r1 = n1
-    #        if n1 > n2 and np.dot(p1, p2) / (n1 * n2) == 1:  # p1 farther than p2
-    #            p1, p2 = p2, p1  # interchange p1,p2
-    #            chsgn = -1
-    #            r1 = n2
-
-    #        V = self.vector
-    #        L = self.length
-
-    #        L2 = L * L
-    #        b = 2 * np.dot(V, p1)
-    #        r12 = r1 * r1
-    #        b2 = b / L / 2
-    #        if r1 + b2 == 0:
-    #            V, b = -V, -b
-    #            b2 = b / L / 2
-
-    #        if r1 + b2 != 0:
-    #            integral = math.log((math.sqrt(L2 + b + r12) + L + b2) / (r1 + b2)) / L
-
-    #        # change sign of I if p1,p2 were interchanged
-    #        self._pqr = integral * chsgn * V
-    #        # assign twin value
-    #        self._set_twin_pqr(-self._pqr)
-
+    @staticmethod
+    @jit(nopython=True)
     def _line_integral_along_edge(
-        self,
         cj: float,
         Lj: np.ndarray,
         lj: float,
@@ -210,34 +153,31 @@ class Edge:
     ) -> tuple[np.ndarray, np.ndarray]:
         """Line integral along edge"""
         Ll = Lj / lj
-        Rr = 0
-        u, v = 0, 0
-        DU, DV = 0, 0
-        if cj != 0:
+        if abs(cj) > epsilon:  # cj != 0
             # observation point and edge are not in line
             l2 = lj * lj
             r2 = rj * rj
-            sqrt = math.sqrt(l2 + bj + r2)
+            _sqrt = sqrt(l2 + bj + r2)
 
-            t = (sqrt + lj + b2) / cj
+            t = (_sqrt + lj + b2) / cj
 
-            integral = math.log(t)
+            integral = log(t)
 
         else:
             # observation point and edge are in line
             t = abs(lj - rj) / rj
 
-            integral = math.log(t)
+            integral = log(t)
 
         pqr = integral * Ll
 
         if gradient:
             Rr = Rj / rj
 
-            if cj != 0:
+            if abs(cj) > epsilon:  # cj != 0
                 u = t * cj
                 v = cj
-                DU = -((Lj + Rj) / sqrt + Ll)
+                DU = -((Lj + Rj) / _sqrt + Ll)
                 DV = -(Rr + Ll)
 
             else:
@@ -277,7 +217,7 @@ class Edge:
             # bj = 2 Rj.Lj
             bj = 2 * np.dot(R1, Lj)
             b2 = bj / lj / 2
-            if r1 + b2 == 0:
+            if abs(r1 + b2) < epsilon:  # r1 + b2 == 0
                 # observation point and edge are in line
                 Lj, bj = -Lj, -bj
                 b2 = bj / lj / 2
@@ -326,9 +266,6 @@ class Face:
         simplices: points indices (from Polyhedron points list) of the neighbors faces
         """
         logger.trace("initialise Face")
-        # self._polyhedron = polyhedron
-        # self.polypoints = polypoints
-        # self.polynorm = polynorm
         self.points = points
         self.simplex = simplex
         self.npoints = len(self.simplex)
@@ -355,7 +292,6 @@ class Face:
         self._sign = None
         self._omega = None
         self._domega = None
-        # self._pqr.fill(np.nan)
         self._pqr = None
         self._dpqr = None
         for edge in self.edges:
@@ -391,14 +327,11 @@ class Face:
     #     )
     #     "\n".join("%s:%s" % (k, v) for k, v in self.maze.items())
 
-    # def _add_pqr(self, pqr: np.ndarray) -> None:
     def _add_pqr(self, pqr: np.ndarray | None) -> None:
         """ """
-        # if not np.array_equal(self._pqr, vector_nan, equal_nan=True):
         if self._pqr is not None:
             self._pqr += pqr
         else:
-            # self._pqr = deepcopy(pqr)
             self._pqr = pqr
 
     def _add_dpqr(self, dpqr: np.ndarray | None) -> None:
@@ -463,6 +396,7 @@ class Face:
         else:
             raise NotImplementedError("'dp1' is undefined")
 
+    # @profile
     def _get_omega(self, obs: np.ndarray, gradient: bool = False) -> None:
         """compute solid angle subtended by the face at the observation point
 
@@ -489,20 +423,36 @@ class Face:
             if gradient:
                 # [[p1 x dpx, p1 x dpy, p1 x dpz],[p2 x dpx,...],...]
                 cross_dp = cross_product(points, minus_identity)
+                # cross_dp = np.array(
+                #     [
+                #         [cross_product(points[i], minus_identity[j]) for j in range(3)]
+                #         for i in range(3)
+                #     ]
+                # )
 
             w = 0
             dw = 0
             for i in range(self.npoints):
                 inout = dots[i]
-                (A1, A2) = self._get_A1A2(i, inout, unitv)
-                perp = self._get_perp(i, inout, points, A1)
+                (A1, A2) = self._get_A1A2(i, inout, self.npoints, unitv)
+                perp = self._get_perp(i, inout, self.npoints, points, A1)
                 b = self._get_b(A1, A2)
 
                 angle = self._get_angle(i, inout, b, perp)
                 w += angle
                 if gradient:
                     dangle = self._get_dangle(
-                        i, inout, b, perp, A1, A2, cross_dp, cross, norm
+                        i,
+                        inout,
+                        b,
+                        perp,
+                        A1,
+                        A2,
+                        self.npoints,
+                        cross_dp,
+                        cross,
+                        norm,
+                        unitv,
                     )
                     dw += dangle
 
@@ -510,89 +460,97 @@ class Face:
             self._omega = -self._sign * w
             self._domega = -self._sign * dw
 
+    @staticmethod
+    # @jit(nopython=True)
     def _get_A1A2(
-        self, i: int, inout: float, unitv: np.ndarray
+        i: int, inout: float, npoints: int, unitv: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray]:
         """ """
-        A1, A2 = -unitv[i], unitv[(i + 1) % self.npoints]
+        A1, A2 = -unitv[i], unitv[(i + 1) % npoints]
         if inout > 0:
             A1, A2 = A2, A1
         return (A1, A2)
 
+    @staticmethod
+    # @jit(nopython=True)
     def _get_perp(
-        self, i: int, inout: float, points: np.ndarray, A1: np.ndarray
+        i: int, inout: float, npoints: int, points: np.ndarray, A1: np.ndarray
     ) -> float:
         """ """
         # Check if face is seen from inside
         if inout == 0:
-            perp = 1
+            return 1
         else:
-            p3 = points[(i + 2) % self.npoints]  # p3
+            p3 = points[(i + 2) % npoints]  # p3
             # if inout>0: face seen from inside
             if inout > 0:
                 p3 = points[i]  # p1
 
             # sign of perp is negative if points are clockwise
-            perp = np.dot(p3, A1)
+            return np.dot(p3, A1)
 
-        return perp
+    @staticmethod
+    # @jit(nopython=True)
+    def _get_b(A1: np.ndarray, A2: np.ndarray) -> float:
+        return np.dot(A1, A2)
 
-    def _get_b(self, A1: np.ndarray, A2: np.ndarray) -> float:
-        b = np.dot(A1, A2)
-        return b
-
-    def _get_angle(self, i: int, inout: float, b: float, perp: float) -> float:
+    @staticmethod
+    # @jit(nopython=True)
+    def _get_angle(i: int, inout: float, b: float, perp: float) -> float:
         if inout == 0:
             angle = 0
         else:
-            angle = math.acos(b)
+            angle = acos(b)
             if perp < 0:
                 angle = 2 * np.pi - angle
         return angle
 
+    @staticmethod
+    # @jit(nopython=True)
     def _get_dangle(
-        self,
         i: int,
         inout: float,
         b: float,
         perp: float,
         A1: np.ndarray,
         A2: np.ndarray,
+        npoints: int,
         cross_dp: np.ndarray,
         cross: list[np.ndarray],
         norm: np.ndarray,
+        unitv: np.ndarray,
     ) -> float:
-        dangle = 0
+        dangle = np.zeros(3)
+        # local variables are access much more efficiently
+        npdot = np.dot
 
-        cdp1, cdp2, cdp3 = (
-            -cross_dp[i],
-            cross_dp[(i + 1) % self.npoints],
-            -cross_dp[(i + 2) % self.npoints],
-        )
+        cdp1 = -cross_dp[i]
+        cdp2 = cross_dp[(i + 1) % npoints]
+        cdp3 = -cross_dp[(i + 2) % npoints]
 
-        V1, V2 = -cross[i], cross[(i + 1) % self.npoints]
-        v1, v2 = norm[i], norm[(i + 1) % self.npoints]
+        V1, V2 = -cross[i], cross[(i + 1) % npoints]
+        v1, v2 = norm[i], norm[(i + 1) % npoints]
+        uV1, uV2 = -unitv[i], unitv[(i + 1) % npoints]
 
         if inout > 0:
             cdp1, cdp3 = cdp3, cdp1
             V1, V2 = V2, V1
             v1, v2 = v2, v1
-
-        # cdp1 = cross_product(minus_identity, p1)
-        # cdp2 = cross_product(minus_identity, p2)
-        # cdp3 = cross_product(minus_identity, p3)
+            uV1, uV2 = uV2, uV1
 
         dV1 = cdp1 + cdp2
         dV2 = cdp3 + cdp2
 
-        dv1 = np.dot(dV1, V1) / v1
-        dv2 = np.dot(dV2, V2) / v2
+        dv1 = npdot(dV1, uV1)
+        dv2 = npdot(dV2, uV2)
+        # dv1 = np.dot(dV1, V1) / v1
+        # dv2 = np.dot(dV2, V2) / v2
 
         DA1 = (dV1 * v1 - V1 * dv1[:, np.newaxis]) / (v1 * v1)
         DA2 = (dV2 * v2 - V2 * dv2[:, np.newaxis]) / (v2 * v2)
 
-        DB = np.dot(DA1, A2) + np.dot(DA2, A1)
-        denom = math.sqrt(1 - b * b)
+        DB = npdot(DA1, A2) + npdot(DA2, A1)
+        denom = sqrt(1 - b * b)
 
         if denom != 0:
             dangle = -DB / denom
@@ -838,17 +796,26 @@ class Polyhedron:
     https://stackoverflow.com/a/51992639
     """
 
-    def __init__(self, points: np.ndarray) -> None:
+    def __init__(self, points: np.ndarray | str) -> None:
         """initialise Polyhedron object
 
         points: list of vertices (corner points) [x,y,z]
         """
         logger.trace("initialise Polyhedron")
         # check points list of coordinates
-        if not isinstance(points, np.ndarray):
-            raise KeyError("'points' must be a numpy array.")
+        if isinstance(points, str):
+            # check file exists
+            if Path(points).is_file():
+                df = pd.read_csv(points, sep=",", header=None)
+                self.points = df.values
+            else:
+                raise FileNotFoundError(f"File {points} not found")
+        else:
+            if not isinstance(points, np.ndarray):
+                raise KeyError("'points' must be a numpy array or a csv file.")
+            else:
+                self.points = points
 
-        self.points = points
         self.npoints = len(points)
         self._norm = np.empty(self.npoints)
         self._norm.fill(np.nan)
@@ -873,6 +840,7 @@ class Polyhedron:
         """Warning"""
         hull = ConvexHull(self.points)
         centroid = np.mean(self.points[hull.vertices, :], axis=0)
+        npdot = np.dot
 
         faces = []
         # check simplex points are in counterclockwise
@@ -889,7 +857,7 @@ class Polyhedron:
             D = centroid
             D_in_hull = self._in_hull(hull.points, D)
             AD = D - A
-            dot = np.dot(cross, AD)
+            dot = npdot(cross, AD)
             _niter = 0
             while dot == 0 and not D_in_hull:
                 _niter += 1
@@ -902,7 +870,7 @@ class Polyhedron:
                 D = centroid + _rand
                 D_in_hull = self._in_hull(hull.points, D)
                 AD = D - A
-                dot = np.dot(cross, AD)
+                dot = npdot(cross, AD)
                 if _niter > 10:
                     raise RuntimeError("Too many iteration to find point inside hull")
 
@@ -965,50 +933,50 @@ class Polyhedron:
                             twin.set_twin(edge)
                             break
 
-    def shift_origin(self, coord):
-        """change points origin to 'coord'
+    # def shift_origin(self, coord):
+    #     """change points origin to 'coord'
 
-        return points = points - coord
-        """
-        self.points -= coord
+    #     return points = points - coord
+    #     """
+    #     self.points -= coord
 
-    def change_norm(self, nan=False):
-        """compute norm of points' vectors.
+    # def change_norm(self, nan=False):
+    #     """compute norm of points' vectors.
 
-        optionally, force all value to NaN
-        """
-        if nan:
-            self._norm.fill(np.nan)
-        else:
-            self._norm[:] = np.linalg.norm(self.points, axis=1)
+    #     optionally, force all value to NaN
+    #     """
+    #     if nan:
+    #         self._norm.fill(np.nan)
+    #     else:
+    #         self._norm[:] = np.linalg.norm(self.points, axis=1)
 
-    def set_origin(self, coord):
-        """set up new cooridnates' origin 'coord'
+    # def set_origin(self, coord):
+    #     """set up new cooridnates' origin 'coord'
 
-        coord: new origin
-        """
-        # shift origin to new origin
-        self.shift_origin(coord)
-        # compute norm of each points on new axis
-        self.change_norm()
+    #     coord: new origin
+    #     """
+    #     # shift origin to new origin
+    #     self.shift_origin(coord)
+    #     # compute norm of each points on new axis
+    #     self.change_norm()
 
-    def reset_origin(self, coord):
-        """shift back to former origin, and assign nan to norm
+    # def reset_origin(self, coord):
+    #     """shift back to former origin, and assign nan to norm
 
-        coord: origin to shift from
-        """
-        # shift origin back
-        self.shift_origin(-coord)
-        # assign nan to norm of each points
-        self.change_norm(nan=True)
+    #     coord: origin to shift from
+    #     """
+    #     # shift origin back
+    #     self.shift_origin(-coord)
+    #     # assign nan to norm of each points
+    #     self.change_norm(nan=True)
 
-    def setup(self, coord):
-        """set up new origin 'coord', and assign G to zeros"""
-        # shift origin
-        self.set_origin(coord)
-        # assign G
-        G = np.zeros(3)
-        return G
+    # def setup(self, coord):
+    #     """set up new origin 'coord', and assign G to zeros"""
+    #     # shift origin
+    #     self.set_origin(coord)
+    #     # assign G
+    #     G = np.zeros(3)
+    #     return G
 
     def reset(self, coord):
         """reset origin and all parameters"""

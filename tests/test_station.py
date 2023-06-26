@@ -29,7 +29,7 @@ class TestCube:
         # poly = deepcopy(p)
         poly = p
         # shift origin to cube.obs
-        poly.setup(s.coord)
+        # poly.setup(s.coord)
         for i, face in enumerate(poly.faces):
             # if i != 2:
             #     continue
@@ -53,7 +53,7 @@ class TestCube:
         # poly = deepcopy(p)
         poly = p
         # shift origin to cube.obs
-        poly.setup(s.coord)
+        # poly.setup(s.coord)
         for i, face in enumerate(poly.faces):
             # if i != 2:
             #     continue
@@ -139,7 +139,7 @@ class TestCubeGradient:
         # poly = deepcopy(p)
         poly = p
         # shift origin to cube.obs
-        poly.setup(s.coord)
+        # poly.setup(s.coord)
         for i, face in enumerate(poly.faces):
             # if i != 2:
             #     continue
@@ -162,7 +162,7 @@ class TestCubeGradient:
         # poly = deepcopy(p)
         poly = p
         # shift origin to cube.obs
-        poly.setup(s.coord)
+        # poly.setup(s.coord)
         for i, face in enumerate(poly.faces):
             # if i != 2:
             #     continue

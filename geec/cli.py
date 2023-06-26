@@ -43,7 +43,7 @@ def poly():
 
 
 @app.command()
-def test():
+def test_grav():
     cube = [
         (-0.5, -0.5, 0.0),
         (0.5, -0.5, 0.0),

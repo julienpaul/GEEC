@@ -1,14 +1,20 @@
 
 # cProfile
-output_file="/home/julienpaul/Code/geec/profiling/prof/test.prof"
+output_file="/home/julienpaul/Code/geec/profiling/prof/test_grav.prof"
 # python -m cProfile [-o output_file] [-s sort_order] (-m module | myscript.py)
 python -m cProfile -o ${output_file} -m geec test
 
 import pstats
+from pathlib import Path
 sortby = "cumulative"
-output_file="/home/julienpaul/Code/geec/profiling/prof/test.prof"
+output_file="/home/julienpaul/Code/geec/profiling/prof/test_grav.prof"
 ps = pstats.Stats(output_file).sort_stats(sortby)
-ps.print_stats(50)
+ps.print_stats("geec",50)
+
+pstats_file=Path(output_file).with_suffix('.txt')
+with open(pstats_file, 'w') as stream:
+    stats = pstats.Stats(output_file,stream=stream).sort_stats(sortby)
+    stats.print_stats("geec")
 
 
 # timeit

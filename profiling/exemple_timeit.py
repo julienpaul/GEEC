@@ -230,3 +230,27 @@ def f2():
     n1 = - np.identity(3)
 """
 timeit.timeit("f1()", setup=setup)
+
+setup = """
+import numpy as np
+from geec.utils import cross_product
+arr=np.random.rand(3,3)
+def f1(arr):
+    cross = [cross_product(arr[i], arr[(i + 1) % 3]) for i in range(3)]
+
+def f1b(arr):
+    shift = np.roll(arr,-1)
+    cross = [cross_product(arr[i], shift[i]) for i in range(3)]
+
+def f2(arr):
+    cross = [np.cross(arr[i], arr[(i + 1) % 3]) for i in range(3)]
+
+def f3(arr):
+    shift = np.roll(arr,-1)
+    cross = list(map(cross_product,arr,shift))
+
+def f4(arr):
+    shift = np.roll(arr,-1)
+    cross = list(map(np.cross,arr,shift))
+"""
+timeit.timeit("f1(arr)", setup=setup)
