@@ -19,11 +19,9 @@
 # import from standard lib
 from itertools import pairwise
 from math import acos, log, sqrt
-from pathlib import Path
 
 # import from other lib
 import numpy as np
-import pandas as pd
 from loguru import logger
 from numba import jit
 from rich.pretty import pprint as rprint
@@ -796,25 +794,18 @@ class Polyhedron:
     https://stackoverflow.com/a/51992639
     """
 
-    def __init__(self, points: np.ndarray | str) -> None:
+    def __init__(self, points: np.ndarray) -> None:
         """initialise Polyhedron object
 
         points: list of vertices (corner points) [x,y,z]
         """
         logger.trace("initialise Polyhedron")
         # check points list of coordinates
-        if isinstance(points, str):
-            # check file exists
-            if Path(points).is_file():
-                df = pd.read_csv(points, sep=",", header=None)
-                self.points = df.values
-            else:
-                raise FileNotFoundError(f"File {points} not found")
+        # TODO: check np.ndarray shape (N,3)
+        if not isinstance(points, np.ndarray):
+            raise KeyError("'points' must be a numpy array")
         else:
-            if not isinstance(points, np.ndarray):
-                raise KeyError("'points' must be a numpy array or a csv file.")
-            else:
-                self.points = points
+            self.points = points
 
         self.npoints = len(points)
         self._norm = np.empty(self.npoints)

@@ -1,0 +1,18 @@
+
+# Mass Bodies
+mass:
+  # choose one between [points, file_path]
+  points: # list of points [x,y,z]
+  file_path: "./geec/data/cube.csv" # path to file with mass body points
+  density: 1000. # density of the mass body
+  gravity_constant: 6.67408e-11 # gravity constant
+
+# Observation points
+obs:
+  # choose one between [points, file_path, grid]
+  points: [] # list of points [(x,y,z),(),..]
+  input: "" # path to file with observation points
+  grid:
+    xstart_xend_xstep: [-1.05,1.06,0.1]
+    ystart_yend_ystep: [-1.05,1.06,0.1]
+    zstart_zend_zstep: [0,1,1]
