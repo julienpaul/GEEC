@@ -3,6 +3,14 @@
 mass:
   # choose one between [points, file_path]
   points: # list of points [x,y,z]
+    - [-0.5, -0.5, 0.0]
+    - [0.5, -0.5, 0.0]
+    - [0.5, 0.5, 0.0]
+    - [-0.5, 0.5, 0.0]
+    - [-0.5, -0.5, -1.0]
+    - [0.5, -0.5, -1.0]
+    - [0.5, 0.5, -1.0]
+    - [-0.5, 0.5, -1.0]
   file_path: "./geec/data/cube.csv" # full path to file with mass body points
   density: 1000. # density of the mass body [kg m-3]
   gravity_constant: 6.67408e-11 # gravity constant [m3 kg−1 s−2]

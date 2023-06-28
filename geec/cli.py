@@ -28,7 +28,6 @@ logger.add(logdir / "geec_{time}.log")
 app = typer.Typer()
 
 
-@app.command()
 def poly():
     cube = [
         (-0.5, -0.5, 0.0),
@@ -47,6 +46,9 @@ def poly():
 
 @app.command()
 def test_grav():
+    """
+    Test computing gravity fields [mGal] from cube mass body
+    """
     cube = [
         (-0.5, -0.5, 0.0),
         (0.5, -0.5, 0.0),
@@ -94,6 +96,9 @@ def test_grav():
 
 @app.command()
 def test_grad():
+    """
+    Test computing gravity fields [mGal] and gradient gravity fields [E] from cube mass body
+    """
     cube = [
         (-0.5, -0.5, 0.0),
         (0.5, -0.5, 0.0),
@@ -219,22 +224,36 @@ def read_obs_points(obs) -> np.ndarray:
 
 @app.command()
 def run(
-    output: Annotated[str, typer.Argument(help="output file path")],
+    output: Annotated[str, typer.Argument(help="Output file path")],
     # config: str = "",
-    config: Annotated[str, typer.Option(help="configuration file path")] = "",
+    config: Annotated[
+        str,
+        typer.Option(
+            help="Configuration file path",
+            rich_help_panel="Customization and Utils",
+        ),
+    ] = "",
     version: Annotated[
         bool,
         typer.Option(
             "--version",
             callback=_version_callback,
+            help="Show version",
             is_eager=True,
-            # rich_help_panel="Customization and Utils",
         ),
     ] = False,
-    gradient: Annotated[bool, typer.Option()] = False,
+    gradient: Annotated[
+        bool,
+        typer.Option(
+            help="Compute gradient gravity fields",
+            rich_help_panel="Customization and Utils",
+        ),
+    ] = False,
 ):
     """
-    Compute gravity fields from a mass body at some observation points.
+    Compute gravity fields [mGal] from a mass body at some observation points.
+
+    Optionally compute gradient gravity fields [E]
     """
     cfg = _setup_cfg()
     if config:
@@ -268,10 +287,37 @@ def run(
     df[["Gx", "Gy", "Gz", "txx", "txy", "txz", "tyy", "tyz", "tzz"]] = listGT
 
     # Save result in csv file
-    filepath = Path(output).expanduser().resolve()
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(filepath.with_suffix(".csv"), index=False)
-    logger.info(f"Save result in csv file {filepath.with_suffix('.csv')}")
+    file_path = Path(output).expanduser().resolve()
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(file_path.with_suffix(".csv"), index=False)
+    logger.info(f"Save result in csv file {file_path.with_suffix('.csv')}")
+
+
+@app.command()
+def config(
+    output: Annotated[
+        str,
+        typer.Option(
+            help="output file path",
+            rich_help_panel="Customization and Utils",
+        ),
+    ] = "",
+):
+    """
+    Create a template of the configuration file.
+    """
+    if output:
+        file_path = Path(output).expanduser().resolve().with_suffix(".yaml")
+    else:
+        file_path = Path("./config_template.yaml").resolve()
+
+    cfg = _setup_cfg()
+    pkg_path = Path(cfg._package_path)
+    template = pkg_path / "config_template.yaml"
+
+    # copy template file
+    file_path.write_text(template.read_text())
+    logger.info(f"Save configuration template in {file_path}")
 
 
 def main():
