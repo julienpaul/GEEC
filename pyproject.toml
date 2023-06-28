@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "geec"
-version = "0.0.1"
+version = "0.0.2"
 description = "Program to calculate gravity and gravity gradients due to irregularly shaped bodies."
 authors = ["Julien Paul <fjulien.paul@umontpellier.fr>"]
 repository = "https://github.com/julienpaul/geec"

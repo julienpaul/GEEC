@@ -10,7 +10,7 @@ from geec.cli import app
 
 
 def test_version():
-    assert __version__ == "0.0.1"
+    assert __version__ == "0.0.2"
 
 
 setup = """

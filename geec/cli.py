@@ -25,7 +25,7 @@ _ = Path(__file__)
 logdir = _.parent.parent / "log"
 logdir.mkdir(parents=True, exist_ok=True)
 logger.add(logdir / "geec_{time}.log")
-app = typer.Typer()
+app = typer.Typer(add_completion=False)
 
 
 def poly():
