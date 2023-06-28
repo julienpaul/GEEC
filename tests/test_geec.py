@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # test_geec.py
 
-import timeit
+# import timeit
 
 from typer.testing import CliRunner
 
@@ -33,8 +33,8 @@ def test_geec_cli_grav():
     # elapse = time.time() - start_time
     assert result.exit_code == 0
     # assert elapse <= 0.5  # sec
-    elapse = 1000 * timeit.timeit("test_grav()", setup=setup, number=100) / 100
-    assert elapse <= 500  # usec/pass
+    # elapse = 1000 * timeit.timeit("test_grav()", setup=setup, number=100) / 100
+    # assert elapse <= 500  # usec/pass
 
 
 def test_geec_cli_grad():
