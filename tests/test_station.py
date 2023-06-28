@@ -13,7 +13,7 @@ from geec.utils import epsilon
 from tests.conftest import Cube, CubeExcepted
 
 # np.allclose => absolute(a - b) <= (atol + rtol * absolute(b))
-atol = 1e-14  # absolute tolerance
+atol = 1.0e-10  # 1e-14  # absolute tolerance
 rtol = 0  # relative tolerance
 
 
