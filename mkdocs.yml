@@ -1,11 +1,11 @@
 site_name: geec
 repo_url: https://github.com/julienpaul/geec
-site_url: https://julienpaul.github.io/geec
+site_url: https://julienpaul.github.io/GEEC
 site_description: Program to calculate gravity and gravity gradients due to irregularly shaped bodies.
 site_author: Julien Paul
 edit_uri: edit/main/docs/
 repo_name: julienpaul/geec
-copyright: Maintained by <a href="https://julienpaul.com">Florian</a>.
+copyright: Maintained by <a href="https://github.com/julienpaul">Julien</a>.
 
 nav:
   - Home: index.md

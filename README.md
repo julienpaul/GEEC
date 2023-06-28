@@ -9,7 +9,7 @@
 Program to calculate gravity and gravity gradients due to irregularly shaped bodies.
 
 - **Github repository**: <https://github.com/julienpaul/geec/>
-- **Documentation** <https://julienpaul.github.io/geec/>
+- **Documentation** <https://julienpaul.github.io/GEEC/>
 
 ## Installation
 
