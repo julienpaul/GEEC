@@ -1,4 +1,8 @@
 
-    $ python -m geec --help
+```
+$ python -m geec --help
+```
 or
-    $ poetry run geec --help
+```
+$ poetry run geec --help
+```

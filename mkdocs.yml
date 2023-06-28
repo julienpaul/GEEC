@@ -10,6 +10,9 @@ copyright: Maintained by <a href="https://julienpaul.com">Florian</a>.
 nav:
   - Home: index.md
   - Modules: modules.md
+  - Usage: usage.md
+  - Install: install.md
+  - Build: build.md
 plugins:
   - search
   - mkdocstrings:
