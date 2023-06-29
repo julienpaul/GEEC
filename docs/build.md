@@ -11,6 +11,11 @@ $ pyhton -m geec run --version
 $ git tag <version>  
 ```
 
+# Export requirements.txt
+```
+$ poetry export --format=requirements.txt > requirements.txt
+```
+
 # Builds the source and wheels archives
 ```
 $ poetry build 
