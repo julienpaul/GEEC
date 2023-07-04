@@ -33,6 +33,7 @@ tox = "^3.25.1"
 black = "^23.3.0"
 ruff = "^0.0.274"
 line-profiler = "^4.0.3"
+poetry2conda = "^0.3.0"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = "^1.4.2"
@@ -42,6 +43,9 @@ mkdocstrings = {extras = ["python"], version = "^0.19.0"}
 
 [tool.poetry.scripts]
 geec = "geec.cli:main"
+
+[tool.poetry2conda]
+name = "geec-env"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
