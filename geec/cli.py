@@ -5,6 +5,7 @@
 
 # --- import -----------------------------------
 # import from standard lib
+import sys
 from pathlib import Path
 from typing import Annotated
 
@@ -24,7 +25,12 @@ from geec.station import Station
 _ = Path(__file__)
 logdir = _.parent.parent / "log"
 logdir.mkdir(parents=True, exist_ok=True)
-logger.add(logdir / "geec_{time}.log")
+# removes the default (0ᵗʰ) handler
+logger.remove(0)
+# add handler to stderr
+logger.add(sys.stderr, level="SUCCESS", format="{message}")
+# add handler to file
+logger.add(logdir / "geec_{time}.log", level="DEBUG")
 app = typer.Typer(add_completion=False)
 
 
@@ -150,7 +156,7 @@ def test_grad():
 
 def _version_callback(value: bool):
     if value:
-        print(f"version: {geec.__version__}")
+        print(f"Version: {geec.__version__}")
         raise typer.Exit()
 
 
@@ -258,6 +264,7 @@ def run(
     cfg = _setup_cfg()
     if config:
         cfg.set_file(config)
+    show_arguments(cfg)
 
     # work on mass body
     mass = cfg["mass"]
@@ -290,7 +297,7 @@ def run(
     file_path = Path(output).expanduser().resolve()
     file_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(file_path.with_suffix(".csv"), index=False)
-    logger.info(f"Save result in csv file {file_path.with_suffix('.csv')}")
+    logger.success(f"\nResults are saved in csv file {file_path.with_suffix('.csv')}")
 
 
 @app.command()
@@ -318,6 +325,29 @@ def config(
     # copy template file
     file_path.write_text(template.read_text())
     logger.info(f"Save configuration template in {file_path}")
+
+
+def show_arguments(cfg):
+    logger.info(f"Version: {geec.__version__}")
+    logger.info("\nConfiguration:")
+    logger.info("Mass Body")
+    mass = cfg["mass"]
+    logger.info(f"   points  : {mass['points']}")
+    logger.info(f"   file_path: {mass['file_path']}")
+    logger.info(f"   density: {mass['density']} kg m-3")
+    logger.info(f"   gravity_constant: {mass['gravity_constant']} m3 kg-1 s-2")
+
+    logger.info("Observation points")
+    obs = cfg["obs"]
+    # choose one between [points, file_path, grid]
+    logger.info(f"   points: {obs['points']}")
+    logger.info(f"   file_path: {obs['file_path']}")
+    logger.info("   grid:")
+    grid = obs["grid"]
+    logger.info(f"      xstart_xend_xstep: {grid['xstart_xend_xstep']}")
+    logger.info(f"      ystart_yend_ystep: {grid['ystart_yend_ystep']}")
+    logger.info(f"      zstart_zend_zstep: {grid['zstart_zend_zstep']}\n")
+    logger.success(f"Note: logfiles are stored in {logdir}")
 
 
 def main():
