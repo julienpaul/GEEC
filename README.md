@@ -6,11 +6,27 @@
 [![Commit activity](https://img.shields.io/github/commit-activity/m/julienpaul/geec)](https://img.shields.io/github/commit-activity/m/julienpaul/geec)
 [![License](https://img.shields.io/github/license/julienpaul/geec)](https://img.shields.io/github/license/julienpaul/geec)
 
-Program to calculate gravity and gravity gradients due to irregularly shaped bodies.
+Program to calculate gravity and gravity gradients fields due to irregularly shaped bodies.
+
+## Installation from github hosted repo's specific tag 0.0.3
+```
+$ pip install git+https://github.com/julienpaul/GEEC.git@0.0.3#egg=geec
+```
+
+# To get help/usage on 'package' from terminal
+```
+$ python -m geec --help
+```
+
+# To compute gravity fields [mGal] from a mass body at some observation points.
+```
+$ python3 -m geec run <ouptut>
+```
 
 - **Github repository**: <https://github.com/julienpaul/geec/>
 - **Documentation** <https://julienpaul.github.io/GEEC/>
 
+<!--
 ## Installation
 
 ### Installation using Poetry
@@ -63,6 +79,7 @@ Create a new tag in the form ``*.*.*``.
 
 For more details, see [here](https://fpgmaas.github.io/cookiecutter-poetry/features/cicd/#how-to-trigger-a-release).
 
+-->
 ---
 
 Repository initiated with [fpgmaas/cookiecutter-poetry](https://github.com/fpgmaas/cookiecutter-poetry).

@@ -1,23 +1,19 @@
 
-# To run 'package' from terminal
+# To get help/usage on 'package' from terminal
 ```
 $ python -m geec --help
 ```
-or
+<!--
+or (using poetry)
 ```
 $ poetry run geec --help
 ```
-
-> **_Note:_**
-> To get help/usage message
-> ```
-> $ python3 -m geec --help
-> ```
+-->
 
 # To compute gravity fields [mGal] from a mass body at some observation points.
 
 ```
-$ python3 -m geec run
+$ python3 -m geec run <output>
 ```
 
 > **_Note:_**

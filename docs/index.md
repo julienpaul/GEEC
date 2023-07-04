@@ -5,7 +5,7 @@
 [![Commit activity](https://img.shields.io/github/commit-activity/m/julienpaul/geec)](https://img.shields.io/github/commit-activity/m/julienpaul/geec)
 [![License](https://img.shields.io/github/license/julienpaul/geec)](https://img.shields.io/github/license/julienpaul/geec)
 
-Program to calculate gravity and gravity gradients due to irregularly shaped bodies.
+Program to calculate gravity and gravity gradients fields due to irregularly shaped bodies.
 
 GEEC, stands for Gal Eötvös Earth Calculator, is a software dedicated to compute precisely the gravitational fields of a mass body. 
 The current software is derived from Anita Thea Saraswati software.

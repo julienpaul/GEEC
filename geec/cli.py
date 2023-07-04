@@ -231,7 +231,6 @@ def read_obs_points(obs) -> np.ndarray:
 @app.command()
 def run(
     output: Annotated[str, typer.Argument(help="Output file path")],
-    # config: str = "",
     config: Annotated[
         str,
         typer.Option(
