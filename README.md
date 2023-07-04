@@ -8,23 +8,24 @@
 
 Program to calculate gravity and gravity gradients fields due to irregularly shaped bodies.
 
-## Installation from github hosted repo's specific tag 0.0.3
-```
-$ pip install git+https://github.com/julienpaul/GEEC.git@0.0.3#egg=geec
-```
+- **Github repository**: <https://github.com/julienpaul/geec/>  
+- **Documentation** <https://julienpaul.github.io/GEEC/>
 
-# To get help/usage on 'package' from terminal
+
+### To get help/usage on 'package' from terminal
 ```
 $ python -m geec --help
 ```
 
-# To compute gravity fields [mGal] from a mass body at some observation points.
+### To compute gravity fields [mGal] from a mass body at some observation points.
 ```
 $ python3 -m geec run <ouptut>
 ```
 
-- **Github repository**: <https://github.com/julienpaul/geec/>
-- **Documentation** <https://julienpaul.github.io/GEEC/>
+### To compute gravity fields [mGal] and gradient gravity fields [E] from a mass body at some observation points.
+```
+$ python3 -m geec run --gradient <ouptut>
+```
 
 <!--
 ## Installation

@@ -94,10 +94,10 @@ def test_grav():
     df[["Gx", "Gy", "Gz"]] = listG
 
     # Save result in csv file
-    filepath = Path(__file__)
-    filepath = filepath.parent.parent / "output" / "out.csv"
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(filepath, index=False)
+    file_path = Path(__file__)
+    file_path = file_path.parent.parent / "output" / "out.csv"
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(file_path, index=False)
 
 
 @app.command()
@@ -148,10 +148,10 @@ def test_grad():
     df[["Gx", "Gy", "Gz", "txx", "txy", "txz", "tyy", "tyz", "tzz"]] = listGT
 
     # Save result in csv file
-    filepath = Path(__file__)
-    filepath = filepath.parent.parent / "output" / "out_gradient.csv"
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(filepath, index=False)
+    file_path = Path(__file__)
+    file_path = file_path.parent.parent / "output" / "out_gradient.csv"
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(file_path, index=False)
 
 
 def _version_callback(value: bool):
@@ -323,7 +323,7 @@ def config(
 
     # copy template file
     file_path.write_text(template.read_text())
-    logger.info(f"Save configuration template in {file_path}")
+    logger.success(f"Save configuration template in {file_path}")
 
 
 def show_arguments(cfg):
