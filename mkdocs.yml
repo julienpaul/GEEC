@@ -9,10 +9,10 @@ copyright: Maintained by <a href="https://github.com/julienpaul">Julien</a>.
 
 nav:
   - Home: index.md
-  # - Modules: modules.md
   - Usage: usage.md
   - Install: install.md
   - Build: build.md
+  - Modules: modules.md
 plugins:
   - search
   - mkdocstrings:
