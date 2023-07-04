@@ -494,17 +494,17 @@ dev = ["flake8", "markdown", "twine", "wheel"]
 
 [[package]]
 name = "griffe"
-version = "0.31.0"
+version = "0.21.0"
 description = "Signatures for entire Python programs. Extract the structure, the frame, the skeleton of your project, to generate API documentation or find breaking changes in your API."
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.7"
 files = [
-    {file = "griffe-0.31.0-py3-none-any.whl", hash = "sha256:de6e659487497c0e73459d370f40bfda7d6f9f6cec43a687de8a110ec72a2c4f"},
-    {file = "griffe-0.31.0.tar.gz", hash = "sha256:b51f6e9541ce9cb9c08580917971cd4b76b6d88e2469822d612b614fb96be776"},
+    {file = "griffe-0.21.0-py3-none-any.whl", hash = "sha256:e9fb5eeb7c721e1d84804452bdc742bd57b120b13aba663157668ae2d217088a"},
+    {file = "griffe-0.21.0.tar.gz", hash = "sha256:61ab3bc02b09afeb489f1aef44c646a09f1837d9cdf15943ac6021903a4d3984"},
 ]
 
-[package.dependencies]
-colorama = ">=0.4"
+[package.extras]
+async = ["aiofiles (>=0.7,<1.0)"]
 
 [[package]]
 name = "identify"
@@ -1095,18 +1095,18 @@ python-legacy = ["mkdocstrings-python-legacy (>=0.2.1)"]
 
 [[package]]
 name = "mkdocstrings-python"
-version = "1.1.2"
+version = "0.7.1"
 description = "A Python handler for mkdocstrings."
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "mkdocstrings_python-1.1.2-py3-none-any.whl", hash = "sha256:c2b652a850fec8e85034a9cdb3b45f8ad1a558686edc20ed1f40b4e17e62070f"},
-    {file = "mkdocstrings_python-1.1.2.tar.gz", hash = "sha256:f28bdcacb9bcdb44b6942a5642c1ea8b36870614d33e29e3c923e204a8d8ed61"},
+    {file = "mkdocstrings-python-0.7.1.tar.gz", hash = "sha256:c334b382dca202dfa37071c182418a6df5818356a95d54362a2b24822ca3af71"},
+    {file = "mkdocstrings_python-0.7.1-py3-none-any.whl", hash = "sha256:a22060bfa374697678e9af4e62b020d990dad2711c98f7a9fac5c0345bef93c7"},
 ]
 
 [package.dependencies]
-griffe = ">=0.24"
-mkdocstrings = ">=0.20"
+griffe = ">=0.11.1"
+mkdocstrings = ">=0.19"
 
 [[package]]
 name = "mypy"
@@ -2148,4 +2148,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.12"
-content-hash = "39c3e52c476ca3ffa0f17a5f3ebbc508eba5e89951f6506d7385e50059338500"
+content-hash = "b320d7aa410f8db822296c3db0551ff6d489d4a90a6b65a06da48cfa16eced68"

@@ -39,8 +39,8 @@ poetry2conda = "^0.3.0"
 mkdocs = "^1.4.3"
 mkdocstrings = {extras = ["python"], version = "^0.22.0"}
 mkdocs-material = "^9.1.18"
-mkdocstrings-python = "^1.1.2"
-
+# mkdocstrings-python = "^1.1.2"
+griffe = "0.21.0"
 
 [tool.poetry.scripts]
 geec = "geec.cli:main"
