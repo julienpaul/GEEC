@@ -7,6 +7,7 @@
 # import from standard lib
 # import from other lib
 import numpy as np
+from loguru import logger
 
 # import from my project
 
@@ -36,4 +37,6 @@ def cross_product(V1: np.ndarray, V2: np.ndarray) -> np.ndarray:
         z = a1 * b2 - a2 * b1
         return np.array([x, y, z])
     else:
-        raise TypeError("Input vectors must be 3D")
+        msg = "Input vectors must be 3D"
+        logger.error(msg)
+        raise TypeError(msg)

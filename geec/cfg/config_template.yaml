@@ -1,26 +1,60 @@
 
-# Mass Bodies
-mass:
-  # choose one between [points, file_path]
-  points: # list of points [x,y,z]
-    - [-0.5, -0.5, 0.0]
-    - [0.5, -0.5, 0.0]
-    - [0.5, 0.5, 0.0]
-    - [-0.5, 0.5, 0.0]
-    - [-0.5, -0.5, -1.0]
-    - [0.5, -0.5, -1.0]
-    - [0.5, 0.5, -1.0]
-    - [-0.5, 0.5, -1.0]
-  file_path: "./geec/data/cube.csv" # full path to file with mass body points
-  density: 1000. # density of the mass body [kg m-3]
-  gravity_constant: 6.67408e-11 # gravity constant [m3 kg−1 s−2]
+# List of Mass Bodies
+masses:
+  # Warning: indentation and hyphen (-) are required, even if there's only one
+  # mass.
+  - # coordinates from
+    # choose one between [points, file_path]
+    points: # list of points [x,y,z | lon,lat,h]
+      - [-0.5, -0.5, 0.0]
+      - [0.5, -0.5, 0.0]
+      - [0.5, 0.5, 0.0]
+      - [-0.5, 0.5, 0.0]
+      - [-0.5, -0.5, -1.0]
+      - [0.5, -0.5, -1.0]
+      - [0.5, 0.5, -1.0]
+      - [-0.5, 0.5, -1.0]
+    file_path: "/path/to/file/cube.csv" # full path to file with mass body points
+    density: 1000. # density of the mass body [kg m-3]
+    gravity_constant: 6.67408e-11 # gravity constant [m3 kg−1 s−2]
+    # coordinates reference system
+    crs:
+      ref: ellps # [cart, enu, ellps] default: ellps (ellipsoid reference)
 
-# Observation points
-obs:
+      # ellispoid parameters
+      name: # default: 'wgs84'
+      semimajor_axis: # [m]
+      semiminor_axis: # [m]
+
+      # Local ENU parameters (only if ref = enu)
+      longitude_origin: # longitude relative to ellipsoid [degree east]
+      latitude_origin:  # latitude relative to ellipsoid [degree north]
+      altitude_origin:  # height above ellipsoid [m]
+
+      # Vertical datum: Ellipsoid or Geoid [Earth Gravitational Model 84,96,2008]
+      # orthometric height will be transform to height above ellipsoid
+      vdatum: # [ellps, egm84, egm96, egm2008] default: ellps (no change)
+
+# Observers
+observers:
+  # coordinates from
   # choose one between [points, file_path, grid]
   points: [] # list of points [(x,y,z),(),..]
-  input: "" # path to file with observation points
+  file_path: "" # path to file with observation points
   grid:
     xstart_xend_xstep: [-1.05,1.06,0.1]
     ystart_yend_ystep: [-1.05,1.06,0.1]
     zstart_zend_zstep: [0,1,1]
+  # coordinates reference system
+  crs:
+    ref: # [cart, enu, ellps] default: ellps (ellipsoid reference)
+
+    # ellispoid parameters
+    name: # default: 'wgs84'
+    semimajor_axis: # [m]
+    semiminor_axis: # [m]
+
+    # Local ENU parameters (only if ref = enu)
+    longitude_origin: # longitude relative to ellipsoid [degree east]
+    latitude_origin:  # latitude relative to ellipsoid [degree north]
+    altitude_origin:  # height above ellipsoid [m]

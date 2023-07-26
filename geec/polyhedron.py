@@ -22,6 +22,7 @@ from math import acos, log, sqrt
 
 # import from other lib
 import numpy as np
+import numpy.typing as npt
 from loguru import logger
 from numba import jit
 from rich.pretty import pprint as rprint
@@ -794,7 +795,7 @@ class Polyhedron:
     https://stackoverflow.com/a/51992639
     """
 
-    def __init__(self, points: np.ndarray) -> None:
+    def __init__(self, points: npt.ArrayLike) -> None:
         """initialise Polyhedron object
 
         points: list of vertices (corner points) [x,y,z]

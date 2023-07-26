@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Annotated
 
 # import from other lib
-import confuse  # Initialize config with your app
 import numpy as np
 import pandas as pd
 import typer
@@ -18,6 +17,11 @@ from loguru import logger
 
 # import from my project
 import geec
+import geec.config
+import geec.crs
+import geec.dataset
+import geec.mass
+import geec.observer
 from geec.polyhedron import Polyhedron
 from geec.station import Station
 
@@ -31,6 +35,8 @@ logger.remove(0)
 logger.add(sys.stderr, level="SUCCESS", format="{message}")
 # add handler to file
 logger.add(logdir / "geec_{time}.log", level="DEBUG")
+
+# setup typer
 app = typer.Typer(add_completion=False)
 
 
@@ -67,11 +73,21 @@ def test_grav():
     ]
 
     points = np.array(cube)
-    p = Polyhedron(points)
 
     density = 1000
     Gc = 6.67408e-11
     # obs = np.array([-1.05, -1.05, 0])
+
+    crs = geec.crs.CRS(name=geec.crs.CRSEnum.CART)
+    dataset = geec.dataset.Dataset(coords=points, crs=crs)
+    masses = [geec.mass.Mass(density=density, gravity_constant=Gc, dataset=dataset)]
+
+    # transform mass bodies points
+    geec.mass.to_lon180(masses)
+    geec.mass.to_ellipsoid_height(masses)
+    geec.mass.to_ecef(masses)
+    # assess Polyhedron of each mass bodies
+    p = [Polyhedron(mass.dataset.coords) for mass in masses]
 
     # Start, End and Step
     x_start, x_end, x_step = -1.05, 1.06, 0.1
@@ -103,7 +119,8 @@ def test_grav():
 @app.command()
 def test_grad():
     """
-    Test computing gravity fields [mGal] and gradient gravity fields [E] from cube mass body
+    Test computing gravity fields [mGal] and
+    gradient gravity fields [E] from cube mass body
     """
     cube = [
         (-0.5, -0.5, 0.0),
@@ -117,11 +134,21 @@ def test_grad():
     ]
 
     points = np.array(cube)
-    p = Polyhedron(points)
 
     density = 1000
     Gc = 6.67408e-11
     # obs = np.array([-1.05, -1.05, 0])
+
+    crs = geec.crs.CRS(name=geec.crs.CRSEnum.CART)
+    dataset = geec.dataset.Dataset(coords=points, crs=crs)
+    masses = [geec.mass.Mass(density=density, gravity_constant=Gc, dataset=dataset)]
+
+    # transform mass bodies points
+    geec.mass.to_lon180(masses)
+    geec.mass.to_ellipsoid_height(masses)
+    geec.mass.to_ecef(masses)
+    # assess Polyhedron of each mass bodies
+    p = [Polyhedron(mass.dataset.coords) for mass in masses]
 
     # Start, End and Step
     x_start, x_end, x_step = -1.05, 1.06, 0.1
@@ -160,80 +187,13 @@ def _version_callback(value: bool):
         raise typer.Exit()
 
 
-def _setup_cfg():
-    """set up from configuration file(s)
-
-    read parameters from
-    ~/.config/geec/config.yaml
-    otherwise from
-    /path/to/package/cfg/config_default.yaml
-    """
-    # set up configuration file
-    try:
-        # Read configuration file
-        config = confuse.LazyConfig(
-            "geec", modname=geec.__pkg_cfg__
-        )  # Get a value from your YAML file
-
-        # TODO check use of templates,
-        #  cf examples in https://github.com/beetbox/confuse/tree/c244db70c6c2e92b001ce02951cf60e1c8793f75
-
-        # set up default configuration file path
-        pkg_path = Path(config._package_path)
-        config.default_config_path = pkg_path / confuse.DEFAULT_FILENAME
-
-    except Exception:
-        logger.error("Something goes wrong when loading config file.")
-        raise  # Throw exception again so calling code knows it happened
-    else:
-        return config
-
-
-def read_mass_points(mass) -> np.ndarray:
-    if mass["points"]:
-        points = mass["points"].get(list)
-        return np.array(points)
-    elif mass["file_path"]:
-        file_path = Path(mass["file_path"].get(str)).expanduser().resolve()
-        if file_path.is_file():
-            df = pd.read_csv(file_path, sep=",", header=None)
-            return df.values
-        else:
-            raise FileNotFoundError(f"File {file_path} not found")
-    else:
-        raise TypeError("Mass body points must be a list of points or a file")
-
-
-def read_obs_points(obs) -> np.ndarray:
-    if obs["points"]:
-        points = obs["points"].get()
-        return np.array(points)
-    elif obs["file_path"]:
-        file_path = obs["file_path"].get(str)
-        if Path(file_path).is_file():
-            df = pd.read_csv(file_path, sep=",", header=None)
-            return df.values
-        else:
-            raise FileNotFoundError(f"File {file_path} not found")
-    elif obs["grid"]:
-        grid = obs["grid"]
-        # Start, End and Step
-        x_start, x_end, x_step = grid["xstart_xend_xstep"].get(list)
-        y_start, y_end, y_step = grid["ystart_yend_ystep"].get(list)
-        z_start, z_end, z_step = grid["zstart_zend_zstep"].get(list)
-
-        g = np.mgrid[x_start:x_end:x_step, y_start:y_end:y_step, z_start:z_end:z_step]
-        return np.transpose(g.reshape(len(g), -1))
-    else:
-        raise TypeError("Mass body points must be a list of points or a file")
-
-
 @app.command()
 def run(
     output: Annotated[str, typer.Argument(help="Output file path")],
-    config: Annotated[
+    usercfg: Annotated[
         str,
         typer.Option(
+            "--config",
             help="Configuration file path",
             rich_help_panel="Customization and Utils",
         ),
@@ -256,26 +216,34 @@ def run(
     ] = False,
 ):
     """
-    Compute gravity fields [mGal] from a mass body at some observation points.
+    Compute gravity fields [mGal] from mass bodies at some observation points.
 
     Optionally compute gradient gravity fields [E]
     """
-    cfg = _setup_cfg()
-    if config:
-        cfg.set_file(config)
-    show_arguments(cfg)
+    config = geec.config.setup(usercfg)
 
-    # work on mass body
-    mass = cfg["mass"]
-    mass_points = read_mass_points(mass)
-    p = Polyhedron(mass_points)
+    geec.config.show(config)
+    logger.success(f"Note: logfiles are stored in {logdir}")
 
-    density = mass["density"].get(float)
-    Gc = mass["gravity_constant"].get(float)
+    # read mass bodies
+    masses = geec.mass.get_masses(config)
+    # transform mass bodies points
+    geec.mass.to_lon180(masses)
+    geec.mass.to_ellipsoid_height(masses)
+    geec.mass.to_ecef(masses)
+    # assess Polyhedron of each mass bodies
+    p = [Polyhedron(mass.dataset.coords) for mass in masses]
+
+    density = masses[0].density
+    Gc = masses[0].gravity_constant
 
     # observation points
-    obs = cfg["obs"]
-    obs_points = read_obs_points(obs)
+    observer = geec.observer.get_observer(config)
+    observer.to_wgs84()
+
+    obs_points = observer.dataset.coords
+    obs_name = observer.coords_name
+    obs_unit = observer.coords_unit
 
     def add_gravity(row):
         s = Station(np.array(row))
@@ -286,11 +254,21 @@ def run(
         ]  # "txx", "txy", "txz", "tyy", "tyz", "tzz"
         return np.concatenate([listG, listT])
 
-    # create dataframe
-    df = pd.DataFrame(obs_points, columns=["x_mes", "y_mes", "z_mes"])
-
     listGT = np.apply_along_axis(add_gravity, axis=1, arr=obs_points)
-    df[["Gx", "Gy", "Gz", "txx", "txy", "txz", "tyy", "tyz", "tzz"]] = listGT
+    G_name = ["Gx", "Gy", "Gz"]
+    G_unit = ["(mGal)", "(mGal)", "(mGal)"]
+    T_name = ["txx", "txy", "txz", "tyy", "tyz", "tzz"]
+    T_unit = ["(E)", "(E)", "(E)", "(E)", "(E)", "(E)"]
+
+    # create dataframe
+    data = np.concatenate([obs_points, listGT], axis=1)
+    name = obs_name + G_name + T_name
+    unit = obs_unit + G_unit + T_unit
+    columns = pd.MultiIndex.from_tuples(zip(name, unit, strict=True))
+    df = pd.DataFrame(data, columns=columns)
+
+    # df = pd.DataFrame(obs_points, columns=["x_mes", "y_mes", "z_mes"])
+    # df[["Gx", "Gy", "Gz", "txx", "txy", "txz", "tyy", "tyz", "tzz"]] = listGT
 
     # Save result in csv file
     file_path = Path(output).expanduser().resolve()
@@ -317,36 +295,13 @@ def config(
     else:
         file_path = Path("./config_template.yaml").resolve()
 
-    cfg = _setup_cfg()
-    pkg_path = Path(cfg._package_path)
+    config = geec.config.setup()
+    pkg_path = Path(str(config._package_path))
     template = pkg_path / "config_template.yaml"
 
     # copy template file
     file_path.write_text(template.read_text())
     logger.success(f"Save configuration template in {file_path}")
-
-
-def show_arguments(cfg):
-    logger.info(f"Version: {geec.__version__}")
-    logger.info("\nConfiguration:")
-    logger.info("Mass Body")
-    mass = cfg["mass"]
-    logger.info(f"   points  : {mass['points']}")
-    logger.info(f"   file_path: {mass['file_path']}")
-    logger.info(f"   density: {mass['density']} kg m-3")
-    logger.info(f"   gravity_constant: {mass['gravity_constant']} m3 kg-1 s-2")
-
-    logger.info("Observation points")
-    obs = cfg["obs"]
-    # choose one between [points, file_path, grid]
-    logger.info(f"   points: {obs['points']}")
-    logger.info(f"   file_path: {obs['file_path']}")
-    logger.info("   grid:")
-    grid = obs["grid"]
-    logger.info(f"      xstart_xend_xstep: {grid['xstart_xend_xstep']}")
-    logger.info(f"      ystart_yend_ystep: {grid['ystart_yend_ystep']}")
-    logger.info(f"      zstart_zend_zstep: {grid['zstart_zend_zstep']}\n")
-    logger.success(f"Note: logfiles are stored in {logdir}")
 
 
 def main():
