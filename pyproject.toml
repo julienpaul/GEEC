@@ -43,6 +43,7 @@ mkdocstrings = {extras = ["python"], version = "^0.22.0"}
 mkdocs-material = "^9.1.18"
 # mkdocstrings-python = "^1.1.2"
 griffe = "0.21.0"
+mkdocs-include-markdown-plugin = "^4.0.4"
 
 [tool.poetry.scripts]
 geec = "geec.cli:app"

@@ -15,6 +15,7 @@ nav:
   - Modules: modules.md
 plugins:
   - search
+  - include-markdown
   - mkdocstrings:
       handlers:
         python:

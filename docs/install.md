@@ -18,7 +18,7 @@ Set up/update package library
 
 #### Using pip
 ```
-$ pip(3) install -e git+https://github.com/{ username }/{ repo name }.git@{ tag name }#egg={ desired egg name }
+$ pip install -e git+https://github.com/{ username }/{ repo name }.git@{ tag name }#egg={ desired egg name }
 ```
 
 > for 'egg name', use the contents of project-name.egg-info/top_level.txt
@@ -33,14 +33,20 @@ $ pip install git+https://github.com/julienpaul/GEEC.git@0.0.3#egg=geec
 $ pip uninstall geec
 ```
 
-### Install package
+#### Using Conda
 ```
-$ python3 -m pip install path/to/package/dist/icp2edd.SOME_RELEASE.tar.gz
+$ conda install git pip
+$ pip install git+https://github.com/julienpaul/GEEC.git@0.0.3#egg=geec
+```
+
+### Install package from source distribution tar.gz
+```
+$ python -m pip install path/to/package/dist/geec.SOME_RELEASE.tar.gz
 ```
 
 ### Install package in development mode
 ```
-$ pip(3) install -e path/to/package
+$ pip install -e path/to/package
 ```
 
 ---

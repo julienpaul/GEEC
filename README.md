@@ -1,17 +1,28 @@
-# geec
+# Geec
 
 [![Release](https://img.shields.io/github/v/release/julienpaul/geec)](https://img.shields.io/github/v/release/julienpaul/geec)
 [![Build status](https://img.shields.io/github/actions/workflow/status/julienpaul/geec/main.yml?branch=main)](https://github.com/julienpaul/geec/actions/workflows/main.yml?query=branch%3Amain)
 [![codecov](https://codecov.io/gh/julienpaul/geec/branch/main/graph/badge.svg)](https://codecov.io/gh/julienpaul/geec)
-[![Commit activity](https://img.shields.io/github/commit-activity/m/julienpaul/geec)](https://img.shields.io/github/commit-activity/m/julienpaul/geec)
 [![License](https://img.shields.io/github/license/julienpaul/geec)](https://img.shields.io/github/license/julienpaul/geec)
+<!-- [![Commit activity](https://img.shields.io/github/commit-activity/m/julienpaul/geec)](https://img.shields.io/github/commit-activity/m/julienpaul/geec) -->
+
+[![Issues](https://img.shields.io/github/issues-raw/julienpaul/geec)](https://github.com/julienpaul/geec/issues)
+[![Bugs](https://img.shields.io/github/issues/julienpaul/geec/bug?color=red&label=known%20bugs)](https://github.com/julienpaul/geec/issues?q=is%3Aissue+is%3Aopen+label%3Abug)
+[![Pull Requests](https://img.shields.io/github/issues-pr/BjerknesClimateDataCentre/QuinCe)](https://github.com/julienpaul/geec/pulls)
+
+[![cookiecutter](https://img.shields.io/badge/built%20with-Cookiecutter%20Poetry-ff69b4.svg?logo=cookiecutter)](https://github.com/fpgmaas/cookiecutter-poetry)
 
 Program to calculate gravity and gravity gradients fields due to irregularly shaped bodies.
 
-- **Github repository**: <https://github.com/julienpaul/geec/>  
-- **Documentation** <https://julienpaul.github.io/GEEC/>
+---
+<p align="center">
+  <a href="https://julienpaul.github.io/GEEC/">Documentation</a> - <a href="https://github.com/julienpaul/geec/">Github repository</a>
+  <!--
+   - <a href="https://pypi.org/project/geec/">PyPi</a>
+  -->
+</p>
 
-
+---
 ### To get help/usage on 'package' from terminal
 ```
 $ python -m geec --help
@@ -80,7 +91,7 @@ Create a new tag in the form ``*.*.*``.
 
 For more details, see [here](https://fpgmaas.github.io/cookiecutter-poetry/features/cicd/#how-to-trigger-a-release).
 
--->
 ---
 
 Repository initiated with [fpgmaas/cookiecutter-poetry](https://github.com/fpgmaas/cookiecutter-poetry).
+-->
