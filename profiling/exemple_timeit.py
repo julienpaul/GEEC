@@ -254,3 +254,43 @@ def f4(arr):
     cross = list(map(np.cross,arr,shift))
 """
 timeit.timeit("f1(arr)", setup=setup)
+
+setup = """
+import geec.config
+import geec.mass
+from operator import methodcaller
+
+config = geec.config._default_setup()
+masses = geec.mass.get_masses(config)
+arr= masses
+
+def f0(arr):
+    list(map(lambda x: x.to_lon180(), arr))
+
+def f1(arr):
+    [mass.to_lon180() for mass in arr]
+
+def f2(arr):
+    list(map(methodcaller('to_lon180'), arr))
+"""
+timeit.timeit("f0(arr)", setup=setup, number=10000)
+
+setup = """
+import geec.config
+import geec.mass
+import pygeodesy as pgeo
+
+config = geec.config._default_setup()
+masses = geec.mass.get_masses(config)
+geec.mass.to_lon180(masses)
+
+arr=masses[0].body.points
+func=pgeo.ellipsoidalKarney.LatLon
+
+def f0(arr):
+    list(map(lambda  x,y,z: func(y,x), arr))
+
+def f1(arr):
+    [func(y,x) for x,y,z in arr]
+"""
+timeit.timeit("f0(arr)", setup=setup)
