@@ -45,7 +45,7 @@ mkdocs-material = "^9.1.18"
 griffe = "0.21.0"
 
 [tool.poetry.scripts]
-geec = "geec.cli:main"
+geec = "geec.cli:app"
 
 [tool.poetry2conda]
 name = "geec-env"

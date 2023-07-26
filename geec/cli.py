@@ -181,12 +181,6 @@ def test_grad():
     df.to_csv(file_path, index=False)
 
 
-def _version_callback(value: bool):
-    if value:
-        print(f"Version: {geec.__version__}")
-        raise typer.Exit()
-
-
 @app.command()
 def run(
     output: Annotated[str, typer.Argument(help="Output file path")],
@@ -198,15 +192,6 @@ def run(
             rich_help_panel="Customization and Utils",
         ),
     ] = "",
-    version: Annotated[
-        bool,
-        typer.Option(
-            "--version",
-            callback=_version_callback,
-            help="Show version",
-            is_eager=True,
-        ),
-    ] = False,
     gradient: Annotated[
         bool,
         typer.Option(
@@ -304,11 +289,43 @@ def config(
     logger.success(f"Save configuration template in {file_path}")
 
 
-def main():
-    from geec import timing  # noqa: F401
+# def topo(
+# topo: Annotated[
+#     bool,
+#     typer.Option(
+#         help=(
+#             "Mass body is a Topography. Mass will be split into water and land"
+#             " bodies."
+#         ),
+#         rich_help_panel="Customization and Utils",
+#     ),
+# ] = False,
 
-    app()
+
+def _version_callback(value: bool):
+    if value:
+        print(f"{__package__} version: {geec.__version__}")
+        raise typer.Exit()
 
 
-if __name__ == "__main__":
-    main()
+@app.callback()
+def main(
+    version: Annotated[
+        bool,
+        typer.Option(
+            "--version",
+            callback=_version_callback,
+            help="Show version",
+            is_eager=True,
+        ),
+    ] = False
+):
+    """
+    Awesome Geec program
+    """
+    # from geec import timing
+    # app()
+
+
+# if __name__ == "__main__":
+#     app()
