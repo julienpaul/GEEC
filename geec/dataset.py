@@ -133,9 +133,9 @@ def _read_coords(config: Subview) -> npt.NDArray[np.float64]:
     elif config["grid"]:
         grid = config["grid"]
         # Start, End and Step
-        x_start, x_end, x_step = grid["xstart_xend_xstep"].get([float])
-        y_start, y_end, y_step = grid["ystart_yend_ystep"].get([float])
-        z_start, z_end, z_step = grid["zstart_zend_zstep"].get([float])
+        x_start, x_end, x_step = grid["xstart_xend_xstep"].get(list)
+        y_start, y_end, y_step = grid["ystart_yend_ystep"].get(list)
+        z_start, z_end, z_step = grid["zstart_zend_zstep"].get(list)
 
         g = np.mgrid[x_start:x_end:x_step, y_start:y_end:y_step, z_start:z_end:z_step]
         return np.transpose(g.reshape(len(g), -1))
