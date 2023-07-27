@@ -38,7 +38,7 @@ def show(cfg):
         logger.info("  ---")
 
     logger.info("Observers")
-    obs = cfg["obs"]
+    obs = cfg["observers"]
     # choose one between [points, file_path, grid]
     logger.info("  coordinates:")
     logger.info(f"    points: {obs['points']}")
