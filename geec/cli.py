@@ -1,11 +1,9 @@
-#!/usr/bin/env python3
-# cli.py
 """
+Command Line Interface
 """
 
 # --- import -----------------------------------
 # import from standard lib
-import sys
 from pathlib import Path
 from typing import Annotated
 
@@ -17,6 +15,7 @@ from loguru import logger
 
 # import from my project
 import geec
+import geec.api
 import geec.config
 import geec.crs
 import geec.dataset
@@ -25,160 +24,8 @@ import geec.observer
 from geec.polyhedron import Polyhedron
 from geec.station import Station
 
-# setup log directory
-_ = Path(__file__)
-logdir = _.parent.parent / "log"
-logdir.mkdir(parents=True, exist_ok=True)
-# removes the default (0ᵗʰ) handler
-logger.remove(0)
-# add handler to stderr
-logger.add(sys.stderr, level="SUCCESS", format="{message}")
-# add handler to file
-logger.add(logdir / "geec_{time}.log", level="DEBUG")
-
 # setup typer
 app = typer.Typer(add_completion=False)
-
-
-def poly():
-    cube = [
-        (-0.5, -0.5, 0.0),
-        (0.5, -0.5, 0.0),
-        (0.5, 0.5, 0.0),
-        (-0.5, 0.5, 0.0),
-        (-0.5, -0.5, -1.0),
-        (0.5, -0.5, -1.0),
-        (0.5, 0.5, -1.0),
-        (-0.5, 0.5, -1.0),
-    ]
-
-    points = np.array(cube)
-    Polyhedron(points)
-
-
-@app.command()
-def test_grav():
-    """
-    Test computing gravity fields [mGal] from cube mass body
-    """
-    cube = [
-        (-0.5, -0.5, 0.0),
-        (0.5, -0.5, 0.0),
-        (0.5, 0.5, 0.0),
-        (-0.5, 0.5, 0.0),
-        (-0.5, -0.5, -1.0),
-        (0.5, -0.5, -1.0),
-        (0.5, 0.5, -1.0),
-        (-0.5, 0.5, -1.0),
-    ]
-
-    points = np.array(cube)
-
-    density = 1000
-    Gc = 6.67408e-11
-    # obs = np.array([-1.05, -1.05, 0])
-
-    crs = geec.crs.CRS(name=geec.crs.CRSEnum.CART)
-    dataset = geec.dataset.Dataset(coords=points, crs=crs)
-    masses = [geec.mass.Mass(density=density, gravity_constant=Gc, dataset=dataset)]
-
-    # transform mass bodies points
-    geec.mass.to_lon180(masses)
-    geec.mass.to_ellipsoid_height(masses)
-    geec.mass.to_ecef(masses)
-    # assess Polyhedron of each mass bodies
-    p = [Polyhedron(mass.dataset.coords) for mass in masses]
-
-    # Start, End and Step
-    x_start, x_end, x_step = -1.05, 1.06, 0.1
-    y_start, y_end, y_step = -1.05, 1.06, 0.1
-    z_start, z_end, z_step = 0, 1, 1
-
-    g = np.mgrid[x_start:x_end:x_step, y_start:y_end:y_step, z_start:z_end:z_step]
-    listObs = np.transpose(g.reshape(len(g), -1))
-
-    def add_gravity(row):
-        s = Station(np.array(row))
-        s.compute_gravity(p, density, Gc)
-        return s.G
-
-    # create dataframe
-    df = pd.DataFrame(listObs, columns=["x_mes", "y_mes", "z_mes"])
-    # df[["Gx", "Gy", "Gz"]] = df.apply(add_gravity, axis=1, result_type="expand")
-
-    listG = np.apply_along_axis(add_gravity, axis=1, arr=listObs)
-    df[["Gx", "Gy", "Gz"]] = listG
-
-    # Save result in csv file
-    file_path = Path(__file__)
-    file_path = file_path.parent.parent / "output" / "out.csv"
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(file_path, index=False)
-
-
-@app.command()
-def test_grad():
-    """
-    Test computing gravity fields [mGal] and
-    gradient gravity fields [E] from cube mass body
-    """
-    cube = [
-        (-0.5, -0.5, 0.0),
-        (0.5, -0.5, 0.0),
-        (0.5, 0.5, 0.0),
-        (-0.5, 0.5, 0.0),
-        (-0.5, -0.5, -1.0),
-        (0.5, -0.5, -1.0),
-        (0.5, 0.5, -1.0),
-        (-0.5, 0.5, -1.0),
-    ]
-
-    points = np.array(cube)
-
-    density = 1000
-    Gc = 6.67408e-11
-    # obs = np.array([-1.05, -1.05, 0])
-
-    crs = geec.crs.CRS(name=geec.crs.CRSEnum.CART)
-    dataset = geec.dataset.Dataset(coords=points, crs=crs)
-    masses = [geec.mass.Mass(density=density, gravity_constant=Gc, dataset=dataset)]
-
-    # transform mass bodies points
-    geec.mass.to_lon180(masses)
-    geec.mass.to_ellipsoid_height(masses)
-    geec.mass.to_ecef(masses)
-    # assess Polyhedron of each mass bodies
-    p = [Polyhedron(mass.dataset.coords) for mass in masses]
-
-    # Start, End and Step
-    x_start, x_end, x_step = -1.05, 1.06, 0.1
-    y_start, y_end, y_step = -1.05, 1.06, 0.1
-    z_start, z_end, z_step = 0, 1, 1
-
-    g = np.mgrid[x_start:x_end:x_step, y_start:y_end:y_step, z_start:z_end:z_step]
-    listObs = np.transpose(g.reshape(len(g), -1))
-
-    def add_gravity(row):
-        s = Station(np.array(row))
-        s.compute_gravity(p, density, Gc, gradient=True)
-        listG = s.G
-        listT = s.T.flatten()[
-            [0, 1, 2, 4, 5, 8]
-        ]  # "txx", "txy", "txz", "tyy", "tyz", "tzz"
-        return np.concatenate([listG, listT])
-
-    # create dataframe
-    df = pd.DataFrame(listObs, columns=["x_mes", "y_mes", "z_mes"])
-    # df[["Gx", "Gy", "Gz"]] = df.apply(add_gravity, axis=1, result_type="expand")
-
-    listGT = np.apply_along_axis(add_gravity, axis=1, arr=listObs)
-    df[["Gx", "Gy", "Gz", "txx", "txy", "txz", "tyy", "tyz", "tzz"]] = listGT
-
-    # Save result in csv file
-    file_path = Path(__file__)
-    file_path = file_path.parent.parent / "output" / "out_gradient.csv"
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(file_path, index=False)
 
 
 @app.command()
@@ -208,7 +55,6 @@ def run(
     config = geec.config.setup(usercfg)
 
     geec.config.show(config)
-    logger.success(f"Note: logfiles are stored in {logdir}")
 
     # read mass bodies
     masses = geec.mass.get_masses(config)
@@ -256,10 +102,7 @@ def run(
     # df[["Gx", "Gy", "Gz", "txx", "txy", "txz", "tyy", "tyz", "tzz"]] = listGT
 
     # Save result in csv file
-    file_path = Path(output).expanduser().resolve()
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(file_path.with_suffix(".csv"), index=False)
-    logger.success(f"\nResults are saved in csv file {file_path.with_suffix('.csv')}")
+    geec.api.write_file(df, output)
 
 
 @app.command()
@@ -308,6 +151,13 @@ def _version_callback(value: bool):
         raise typer.Exit()
 
 
+def _logdir_callback(value: bool):
+    if value:
+        logdir = geec.api.setup_logdir()
+        print(f"log directory: {logdir}")
+        raise typer.Exit()
+
+
 @app.callback()
 def main(
     version: Annotated[
@@ -318,11 +168,23 @@ def main(
             help="Show version",
             is_eager=True,
         ),
-    ] = False
+    ] = False,
+    logdir: Annotated[
+        bool,
+        typer.Option(
+            "--log",
+            callback=_logdir_callback,
+            help="Show log storage directory",
+            is_eager=True,
+        ),
+    ] = False,
 ):
     """
     Awesome Geec program
     """
+    # setup logger
+    geec.api.setup_logger()
+
     # from geec import timing
     # app()
 
