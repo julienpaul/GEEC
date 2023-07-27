@@ -1,5 +1,5 @@
 """
-    The body module sets up the Coordinates Reference sysytem class,
+    The crs module sets up the Coordinates Reference sysytem class,
 
     Example usage:
 """
@@ -238,7 +238,7 @@ def wrap180(points: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
 
 
 data_path = resources.files("geec.data")
-egm08geoid = pgeo.GeoidKarney(data_path / "geoids/egm2008-1.pgm")
+egm08geoid = pgeo.GeoidKarney(data_path / "geoids/egm2008-2_5.pgm")
 egm96geoid = pgeo.GeoidKarney(data_path / "geoids/egm96-5.pgm")
 egm84geoid = pgeo.GeoidKarney(data_path / "geoids/egm84-15.pgm")
 
