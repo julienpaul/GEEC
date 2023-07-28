@@ -16,8 +16,10 @@ import numpy as np
 import numpy.typing as npt
 import pygeodesy as pgeo
 import pymap3d as pm
+import pyproj
 from confuse import Subview
 from loguru import logger
+from pyproj.crs import CompoundCRS
 
 # import from my project
 
@@ -261,6 +263,8 @@ def ellipsoid_height(
     """Compute ellipsoid height and overwrite height values with it.
 
     Height value assume to be orthometric height
+
+    Note: see https://www.unavco.org/software/geodetic-utilities/geoid-height-calculator/geoid-height-calculator.html
     """
     logger.info("Convert points altitude to ellipsoid height")
     func = VDATUMREF[crs.vdatum]
@@ -269,6 +273,60 @@ def ellipsoid_height(
 
     # ellipsoid height (from GPS) = orthometric height + geoid height
     points.T[2] += geoh
+
+    # update coordinates reference system
+    crs.vdatum = VDatumEnum.ELLPS
+
+    return points, crs
+
+
+pyproj.network.set_network_enabled(active=True)
+
+_WGS84crs = pyproj.crs.CRS.from_epsg(4979)
+_WGS84crs = pyproj.crs.CRS.from_epsg(9754)
+_EGM2008crs = pyproj.crs.CRS.from_epsg(3855)
+_EGM96crs = pyproj.crs.CRS.from_epsg(5773)
+_EGM84crs = pyproj.crs.CRS.from_epsg(5798)
+
+_WGS84_EGM2008crs = CompoundCRS(
+    name=f"{_WGS84crs.name} + {_EGM2008crs.name}",
+    components=[_WGS84crs.to_2d(), _EGM2008crs],
+)
+_WGS84_EGM96crs = CompoundCRS(
+    name=f"{_WGS84crs.name} + {_EGM96crs.name}",
+    components=[_WGS84crs.to_2d(), _EGM96crs],
+)
+_WGS84_EGM84crs = CompoundCRS(
+    name=f"{_WGS84crs.name} + {_EGM84crs.name}",
+    components=[_WGS84crs.to_2d(), _EGM84crs],
+)
+
+_egm08geoid = pyproj.transformer.Transformer.from_crs(
+    crs_to=_WGS84crs, crs_from=_WGS84_EGM2008crs
+).transform
+_egm96geoid = pyproj.transformer.Transformer.from_crs(
+    crs_to=_WGS84crs, crs_from=_WGS84_EGM96crs
+).transform
+_egm84geoid = pyproj.transformer.Transformer.from_crs(
+    crs_to=_WGS84crs, crs_from=_WGS84_EGM84crs
+).transform
+
+
+def ellipsoid_height_pyproj(
+    points: npt.NDArray[np.float64], crs: CRS
+) -> tuple[npt.NDArray[np.float64], CRS]:
+    """Compute ellipsoid height and overwrite height values with it, using pyproj
+
+    Height value assume to be orthometric height
+
+    Note: see https://www.unavco.org/software/geodetic-utilities/geoid-height-calculator/geoid-height-calculator.html
+    """
+    # WARNING: Something wrong when computing ellipsoid height with EGM84
+    logger.info("Convert points altitude to ellipsoid height")
+    func = VDATUMREF[crs.vdatum]
+    lon, lat, alt = points.T
+    # ellipsoid height (from GPS) = orthometric height + geoid height
+    _, _, points.T[2] = func(lat, lon, alt)
 
     # update coordinates reference system
     crs.vdatum = VDatumEnum.ELLPS

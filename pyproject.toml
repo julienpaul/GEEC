@@ -24,6 +24,7 @@ plotly = "^5.15.0"
 perfplot = "^0.10.2"
 pymap3d = "^3.0.1"
 pygeodesy = "^23.6.12"
+pyproj = "^3.6.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"
@@ -50,6 +51,7 @@ geec = "geec.cli:app"
 
 [tool.poetry2conda]
 name = "geec-env"
+channels = "conda-forge"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
