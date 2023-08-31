@@ -68,7 +68,18 @@ class Observer:
     def compute_gravity(self, mass, gradient: bool = False) -> None:
         def add_gravity(row: npt.NDArray) -> npt.NDArray:
             logger.trace(f"compute gravity for observer: {row}")
-            G, T = mass.compute_gravity(glm.vec3(list(row)), gradient=gradient)
+            try:
+                obs = glm.vec3(row)
+            except Exception:
+                obs = glm.vec3(list(row))
+            # mass.change_polyhedron()
+            # change projection
+            mass.to_enu(obs.x, obs.y, obs.z)
+            # no need to shift point for computation in ENU coordinates
+            if mass.dataset.crs.name == geec.crs.CRSEnum.ENU:
+                obs = glm.vec3()
+
+            G, T = mass.compute_gravity(obs, gradient=gradient)
             # keep only "txx", "txy", "txz", "tyy", "tyz", "tzz"
             T = itemgetter(0, 1, 2, 4, 5, 8)(np.array(T).flatten())
             return np.concatenate([G, T])

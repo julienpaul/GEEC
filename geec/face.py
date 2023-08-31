@@ -93,8 +93,8 @@ def get_omega(
             # sign of perp is negative if points are clockwise
             perp = glm.dot(p3, A1)
 
-            # if abs(B) - 1 > 0 and abs(B) - 1 < epsilon:
-            #     B = glm.sign(B)
+            if abs(B) - 1 > 0 and abs(B) - 1 < epsilon:
+                B = glm.sign(B)
             angle = math.acos(B)
             if perp < 0:
                 angle = 2 * np.pi - angle

@@ -1,8 +1,9 @@
 # --- import -----------------------------------
 # import from standard lib
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import InitVar, dataclass, field
 from functools import partial
+from typing import Self
 
 # import from other lib
 import glm
@@ -30,42 +31,84 @@ class Polyhedron:
     redges: list[list[bool]]  # = field(init=False)
     un: list[glm.vec3]
     # topo
-    fland: list[bool]
+    land: InitVar[bool | list[bool]] = field(default=True)
     #
     nfaces: int = field(init=False)
     npoints: int = field(init=False)
     nedges: int = field(init=False)
+    fland: list[bool] = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self, land: bool | list[bool]):
         self.nfaces = len(self.fpoints)
         self.npoints = len(self.points)
         self.nedges = len(self.edges)
+        if isinstance(land, bool):
+            self.fland = [land] * self.nfaces
+        else:
+            if len(land) != self.nfaces:
+                raise ValueError("Invalid length of land array.")
+            self.fland = land
 
-    # def compute_gravity(self):
-    #     faces_points = [[self.points[i] for i in f] for f in self.fpoints]
-    #     edges_points = [[self.points[i] for i in e] for e in self.edges]
+    def __add__(self, poly2: Self):
+        if self.centroid != poly2.centroid:
+            raise ValueError("Cannot add polyhedrons. centroid must be the same.")
 
-    #     omega_domega = geec.face2.get_faces_omega(faces_points, self.un)
-    #     pqr_dpqr = geec.edge2.get_edges_pqr(edges_points)
+        poly2_edges = [
+            frozenset([i + self.npoints for i in list(f)]) for f in poly2.edges
+        ]
+        # increment the indices of face points
+        poly2_fpoints = [[i + self.npoints for i in f] for f in poly2.fpoints]
+        # increment the indices of face edges
+        poly2_fedges = [[i + self.nedges for i in f] for f in poly2.fedges]
 
-    #     faces_omega = [tpl[0] for tpl in omega_domega]
-    #     faces_domega = [tpl[1] for tpl in omega_domega]
+        points = self.points + poly2.points
+        edges = self.edges + poly2_edges
+        fpoints = self.fpoints + poly2_fpoints
+        fedges = self.fedges + poly2_fedges
+        redges = self.redges + poly2.redges
+        un = self.un + poly2.un
+        fland = self.fland + poly2.fland
 
-    #     edges_pqr = [tpl[0] for tpl in pqr_dpqr]
-    #     edges_dpqr = [tpl[1] for tpl in pqr_dpqr]
-    #     faces_pqr = [
-    #         sum([edges_pqr[i] if not b else -edges_pqr[i] for i, b in zip(f, r)])
-    #         for f, r in zip(self.fedges, self.redges)
-    #     ]
-    #     faces_dpqr = [
-    #         [
-    #             edges_dpqr[i] if not b or not edges_dpqr[i] else -edges_dpqr[i]
-    #             for i, b in zip(f, r)
-    #         ]
-    #         for f, r in zip(self.fedges, self.redges)
-    #     ]
+        return Polyhedron(
+            points=points,
+            centroid=self.centroid,
+            edges=edges,
+            fpoints=fpoints,
+            fedges=fedges,
+            redges=redges,
+            un=un,
+            land=fland,
+        )
 
-    #     return (faces_pqr, faces_dpqr, faces_omega, faces_domega)
+    def reverse_faces(self, ccw: list[bool]) -> None:
+        """Reverse face which are NOT ccw.
+
+        Turn face upside down, and reverse points order
+
+        Return outward unit vector and face's points
+        """
+        # reverse vector
+        self.un = [-v if not b else v for b, v in zip(ccw, self.un, strict=True)]
+        # reverse last points, to make them counterclockwise/clockwise
+        _ = [
+            s.reverse() if not b else s for b, s in zip(ccw, self.fpoints, strict=True)
+        ]
+        self.redges = [
+            [not x for x in f] if not b else f
+            for b, f in zip(ccw, self.redges, strict=True)
+        ]
+        # self.fedges = [ fedges[0:2] = reversed(fedges[0:2])
+
+    def get_outward_unit_vectors(self):
+        # list of normalized output vector for each face
+        self.un = [
+            glm.normalize(
+                glm.cross(
+                    self.points[i1] - self.points[i0], self.points[i2] - self.points[i0]
+                )
+            )
+            for i0, i1, i2 in self.fpoints
+        ]
 
     def compute_gravity(self, gradient: bool = False):
         faces_points = [[self.points[i] for i in f] for f in self.fpoints]
@@ -115,76 +158,18 @@ def get_polyhedron(dataset: Dataset, topo: bool = False):
     # points = [glm.vec3(vertex) for vertex in hull.points[hull.vertices, :]]
     # hull = ConvexHull(points)
     points = [glm.vec3(vertex) for vertex in hull.points]
-    npoints = len(points)
     # faces as list of points
     fpoints = [list(s) for s in hull.simplices]
+    # edges as set (unordered list) of points
+    edges = get_set_edges(fpoints)
+    # faces as list of edges
+    fedges, redges = get_face_edges(fpoints, edges)
     # get centroid
     centroid = get_centroid(points, topo)
     # compute outward unit vector of each face
     un = get_outward_unit_vectors(points, fpoints)
     # check ccw
     ccw = check_face_ccw(points, fpoints, centroid, un)
-    # force face to be counterclockwise (if need be)
-    un, fpoints = reverse_face(ccw, un, fpoints)
-    # edges as set (unordered list) of points
-    edges = get_set_edges(fpoints)
-    nedges = len(edges)
-
-    fland = [True] * len(fpoints)
-    if topo:
-        fland, fwater = check_land_water(points, fpoints)
-        # turn water face upside down from topography
-        un, fpoints = reverse_face(fwater, un, fpoints)
-
-        # use geoid height instead of orthometric height
-        # data[:, 2] = dataset.geoh
-        # hull = ConvexHull(data)
-        # geoid_points = [glm.vec3(vertex) for vertex in hull.points]
-        geoid_points = [
-            glm.vec3(v.x, v.y, h) for v, h in zip(points, dataset.geoh, strict=True)
-        ]
-        # we use same indices as for topography but we reverse the order of points
-        geoid_fpoints = [f[::-1] for f in fpoints]
-        # compute outward unit vector of each face
-        geoid_un = get_outward_unit_vectors(geoid_points, geoid_fpoints)
-        # # check ccw
-        # cw = check_face_cw(geoid_points, geoid_fpoints, centroid, geoid_un)
-        # # force face to be clockwise (if need be)
-        # geoid_un, geoid_fpoints = reverse_face(cw, geoid_un, geoid_fpoints)
-        # edges as set (unordered list) of points
-        # geoid_edges = get_set_edges(geoid_fpoints)
-        # As we use same points indices, list of edges is the same
-        geoid_edges = deepcopy(edges)
-
-    # faces as list of edges
-    fedges, redges = get_face_edges(fpoints, edges)
-
-    if topo:
-        # faces as list of edges
-        geoid_fedges = deepcopy(fedges)
-        # reverse edges are
-        geoid_redges = [[not x for x in f] for f in redges]
-
-        # concatenate points from topography and geoids
-        points += geoid_points
-        # concatenate edges from topography and geoids
-        edges += geoid_edges
-
-        # increment the indices of face points
-        geoid_fpoints = [[i + npoints for i in f] for f in geoid_fpoints]
-        # increment the indices of face edges
-        geoid_fedges = [[i + nedges for i in f] for f in geoid_fedges]
-
-        # concatenate face points from topography and geoids
-        fpoints += geoid_fpoints
-        # concatenate face edges from topography and geoids
-        fedges += geoid_fedges
-        # concatenate reverse edges from topography and geoids
-        redges += geoid_redges
-        # concatenate unit outward vector from topography and geoids
-        un += geoid_un
-        # concatenate face land from topography and geoids
-        fland += fwater
 
     p = Polyhedron(
         points=points,
@@ -194,8 +179,9 @@ def get_polyhedron(dataset: Dataset, topo: bool = False):
         fedges=fedges,
         redges=redges,
         un=un,
-        fland=fland,
     )
+    # force face to be counterclockwise (if need be)
+    p.reverse_faces(ccw)
 
     return p
 
@@ -257,15 +243,19 @@ check_face_ccw = partial(_check_face, ccw=True)
 check_face_cw = partial(_check_face, ccw=False)
 
 
-def check_land_water(points, fpoints) -> tuple[list[bool], list[bool]]:
+def check_land_water(points, fpoints) -> tuple[list[bool], list[bool], list[bool]]:
     """Check if most of points in a face are above/below water level
 
     Return list of boolean values indicating if face is land (or not).
     """
     land = [1 if ortho > 0 else -1 for x, y, ortho in points]
-    fland = [sum([land[i] for i in f]) > 0 for f in fpoints]
-    fwater = [not b for b in fland]
-    return fland, fwater
+    # fland = [sum([land[i] for i in f]) > 0 for f in fpoints]
+    # fwater = [not b for b in fland]
+    # face with at least one land point
+    fland = [sum([land[i] for i in f]) != -3 for f in fpoints]
+    # face with at least one water point
+    fwater = [sum([land[i] for i in f]) != 3 for f in fpoints]
+    return land, fland, fwater
 
 
 def reverse_face(ccw: list[bool], un, fpoints):
@@ -312,3 +302,43 @@ def get_face_edges(fpoints, edges):
     fedges = [[edges.index(frozenset(x)) for x in f] for f in forder]
     redges = [[list(frozenset(x)) != x for x in f] for f in forder]
     return fedges, redges
+
+
+def get_polyhedron_topo(poly, geoh):
+    land, fland, fwater = check_land_water(poly.points, poly.fpoints)
+
+    # land
+    #
+    top = deepcopy(poly)
+    bottom = deepcopy(poly)
+
+    bottom.points = [
+        glm.vec3(v.x, v.y, h) for v, h in zip(top.points, geoh, strict=True)
+    ]
+    top.points = [
+        p1 if b else p0
+        for p1, p0, b in zip(top.points, bottom.points, land, strict=True)
+    ]
+
+    # reverse bottom faces
+    blist = [False] * bottom.nfaces
+    bottom.reverse(blist)
+
+    land = top + bottom
+
+    # water
+    top = deepcopy(poly)
+    bottom = deepcopy(poly)
+
+    top.points = [glm.vec3(v.x, v.y, h) for v, h in zip(top.points, geoh, strict=True)]
+    bottom.points = [
+        p1 if b else p0
+        for p1, p0, b in zip(top.points, bottom.points, land, strict=True)
+    ]
+
+    # reverse bottom faces
+    blist = [False] * bottom.nfaces
+    bottom.reverse(blist)
+
+    water = top + bottom
+    water.fland = [False] * water.nfaces

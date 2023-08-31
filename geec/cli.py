@@ -59,6 +59,7 @@ def run(
     mass.to_orthometric_height()
     mass.to_ecef()
     mass.to_polyhedron()
+    mass.to_wgs84()
 
     # observation points
     observer = geec.observer.get_observer(config)

@@ -4,10 +4,13 @@
 # --- import -----------------------------------
 # import from standard lib
 from dataclasses import dataclass, field
+from typing import Self
 
 # import from other lib
 import glm
 from confuse import LazyConfig
+
+import geec.crs
 
 # import from my project
 import geec.dataset
@@ -51,13 +54,17 @@ class Mass:
     def to_polyhedron(self):
         self.polyhedron = geec.polyhedron.get_polyhedron(self.dataset, self.topo)
 
+    def change_polyhedron(self) -> Self:
+        return geec.polyhedron.get_polyhedron_topo(self.polyhedron, self.dataset.geoh)
+
     def compute_gravity(
         self, observer: glm.vec3, gradient: bool = False, faces: bool = False
     ):
         """
         faces: Only use for testing purposes
         """
-        poly = self.polyhedron  # deepcopy ?
+        # deepcopy ?
+        poly = self.change_polyhedron() if self.topo else self.polyhedron
         # shift points
         poly.points = [p - observer for p in poly.points]
 

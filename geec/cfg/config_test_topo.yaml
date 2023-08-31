@@ -46,7 +46,7 @@ observers:
     ref: ellps # [cart, enu, ellps] default: ellps (ellipsoid reference)
 
     # ellispoid parameters
-    name: airy # default: 'wgs84'
+    name: # default: 'wgs84'
     semimajor_axis: # [m]
     semiminor_axis: # [m]
 
