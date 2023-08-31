@@ -16,18 +16,18 @@ def test_version():
 
 def test_geec_cli_grav():
     pkg_path = resources.files("geec")
-    output = pkg_path.parent / "output/out.csv"
+    output = pkg_path.parent / "output/cube.csv"
     runner = CliRunner()
-    result = runner.invoke(app, f"run {output} --config geec/cfg/config_test.yaml")
+    result = runner.invoke(app, f"run {output} --config geec/cfg/config_test_cube.yaml")
     assert result.exit_code == 0
 
 
 def test_geec_cli_grad():
     pkg_path = resources.files("geec")
-    output = pkg_path.parent / "output/out_gradient.csv"
+    output = pkg_path.parent / "output/cube_gradient.csv"
     runner = CliRunner()
     result = runner.invoke(
         app,
-        f"run {output} --config geec/cfg/config_test.yaml --gradient",
+        f"run {output} --config geec/cfg/config_test_cube.yaml --gradient",
     )
     assert result.exit_code == 0

@@ -8,8 +8,6 @@ from pathlib import Path
 from typing import Annotated
 
 # import from other lib
-import numpy as np
-import pandas as pd
 import typer
 from loguru import logger
 
@@ -21,8 +19,6 @@ import geec.crs
 import geec.dataset
 import geec.mass
 import geec.observer
-from geec.polyhedron import Polyhedron
-from geec.station import Station
 
 # setup typer
 app = typer.Typer(add_completion=False)
@@ -56,50 +52,21 @@ def run(
 
     geec.config.show(config)
 
-    # read mass bodies
+    # read mass body
     masses = geec.mass.get_masses(config)
+    mass = masses[0]
     # transform mass bodies points
-    geec.mass.to_lon180(masses)
-    geec.mass.to_ellipsoid_height(masses)
-    geec.mass.to_ecef(masses)
-    # assess Polyhedron of each mass bodies
-    p = [Polyhedron(mass.dataset.coords) for mass in masses]
-
-    density = masses[0].density
-    Gc = masses[0].gravity_constant
+    mass.to_orthometric_height()
+    mass.to_ecef()
+    mass.to_polyhedron()
 
     # observation points
     observer = geec.observer.get_observer(config)
     observer.to_wgs84()
 
-    obs_points = observer.dataset.coords
-    obs_name = observer.coords_name
-    obs_unit = observer.coords_unit
+    observer.compute_gravity(mass, gradient=gradient)
 
-    def add_gravity(row):
-        s = Station(np.array(row))
-        s.compute_gravity(p, density, Gc, gradient=gradient)
-        listG = s.G
-        listT = s.T.flatten()[
-            [0, 1, 2, 4, 5, 8]
-        ]  # "txx", "txy", "txz", "tyy", "tyz", "tzz"
-        return np.concatenate([listG, listT])
-
-    listGT = np.apply_along_axis(add_gravity, axis=1, arr=obs_points)
-    G_name = ["Gx", "Gy", "Gz"]
-    G_unit = ["(mGal)", "(mGal)", "(mGal)"]
-    T_name = ["txx", "txy", "txz", "tyy", "tyz", "tzz"]
-    T_unit = ["(E)", "(E)", "(E)", "(E)", "(E)", "(E)"]
-
-    # create dataframe
-    data = np.concatenate([obs_points, listGT], axis=1)
-    name = obs_name + G_name + T_name
-    unit = obs_unit + G_unit + T_unit
-    columns = pd.MultiIndex.from_tuples(zip(name, unit, strict=True))
-    df = pd.DataFrame(data, columns=columns)
-
-    # df = pd.DataFrame(obs_points, columns=["x_mes", "y_mes", "z_mes"])
-    # df[["Gx", "Gy", "Gz", "txx", "txy", "txz", "tyy", "tyz", "tzz"]] = listGT
+    df = observer.create_dataframe()
 
     # Save result in csv file
     geec.api.write_file(df, output)
@@ -132,17 +99,31 @@ def config(
     logger.success(f"Save configuration template in {file_path}")
 
 
+# @app.command()
 # def topo(
-# topo: Annotated[
-#     bool,
-#     typer.Option(
-#         help=(
-#             "Mass body is a Topography. Mass will be split into water and land"
-#             " bodies."
+#     input: Annotated[str, typer.Argument(help="Topography file path")],
+#     output: Annotated[
+#         str,
+#         typer.Option(
+#             help="output file path",
+#             rich_help_panel="Customization and Utils",
 #         ),
-#         rich_help_panel="Customization and Utils",
-#     ),
-# ] = False,
+#     ] = "",
+# ):
+#     """
+#     Create a configuration file from topography.
+#
+#     Masses will be split into water and land mass.
+#     """
+#     if output:
+#         file_path = Path(output).expanduser().resolve().with_suffix(".yaml")
+#     else:
+#         file_path = Path("./config_topo.yaml").resolve()
+#
+#     geec.topography.get_config(input)
+#     # copy template file
+#     file_path.write_text(template.read_text())
+#     logger.success(f"Save configuration topography in {file_path}")
 
 
 def _version_callback(value: bool):

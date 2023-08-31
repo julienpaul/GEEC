@@ -1,11 +1,17 @@
 from pathlib import Path
 
+import glm
 import numpy as np
 import perfplot
 
 
 def np_linalg_norm(a):
     y = np.linalg.norm(a, axis=1)
+    return y
+
+
+def glm_comprehension(a):
+    y = [glm.normalize(x) for x in a]
     return y
 
 
@@ -19,11 +25,13 @@ b = perfplot.bench(
     setup=lambda n: np.random.rand(n, 3),  # or setup=np.random.rand
     kernels=[
         np_linalg_norm,
+        glm_comprehension,
         comprehension,
     ],
-    labels=["np_linalg_norm", "comprehension"],
+    labels=["np_linalg_norm", "glm_comprehension", "comprehension"],
     n_range=[2**k for k in range(15)],
     xlabel="len(a)",
+    equality_check=None,  # set to None to disable "correctness" assertion
     # More optional arguments with their default values:
     # logx="auto",  # set to True or False to force scaling
     # logy="auto",

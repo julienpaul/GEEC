@@ -1,7 +1,13 @@
+# --- import -----------------------------------
+# import from standard lib
 import numpy as np
 import pymap3d as pm
-import pytest
 
+# import from other lib
+import pytest
+from pytest import approx
+
+# import from my project
 import geec.crs
 
 # np.allclose => absolute(a - b) <= (atol + rtol * absolute(b))
@@ -111,32 +117,73 @@ class TestTransform:
             equal_nan=False,
         )
 
-    def test_ellispoid_height(self):
+    def test_geoid_heights(self):
         points = np.array(
             [
-                [0.0, 90.0, -4138.95],
-                [137.50, 88.82, -2246.88],
-                [-84.985, 88.33, -2114.86],
+                [-62.2138562081, 16.7408514345, 82.2349],
+                [-69.6365451, -31.2084545, 2419.1],
+                [-119.371255098, 34.408092589, 162.510695809],
             ]
         )
         expected = np.array(
             [
-                [0.0, 90.0, -4125.345],
-                [137.5, 88.82, -2233.432261368],
-                [-84.985, 88.33, -2098.43113744],
+                -41.48,
+                30.52,
+                -34.45,
+            ],
+        )
+        egm96 = geec.crs.GeoidDatumEnum.EGM96
+        crs = geec.crs.CRS(gdatum=egm96)
+
+        result = geec.crs.geoid_heights(points, crs)
+        print(f"geoid: {result}")
+        assert result == approx(expected, abs=atol)
+
+    def test_ellps_to_ortho_height(self):
+        points = np.array(
+            [
+                [-62.2138562081, 16.7408514345, 82.2349],
+                [-69.6365451, -31.2084545, 2419.1],
+                [-119.371255098, 34.408092589, 162.510695809],
             ]
         )
-        egm96 = geec.crs.VDatumEnum.EGM96
-        crs = geec.crs.CRS(vdatum=egm96)
-
-        result, result_crs = geec.crs.ellipsoid_height(points, crs)
-        assert np.allclose(
-            result,  # type: ignore[attr-defined]
-            expected,
-            rtol=rtol,
-            atol=atol,
-            equal_nan=False,
+        expected = np.array(
+            [
+                [-62.2138562081, 16.7408514345, 123.72],
+                [-69.6365451, -31.2084545, 2388.58],
+                [-119.371255098, 34.408092589, 196.96],
+            ]
         )
+        egm96 = geec.crs.GeoidDatumEnum.EGM96
+        crs = geec.crs.CRS(gdatum=egm96)
+        geoh = geec.crs.geoid_heights(points, crs)
+
+        result, result_crs = geec.crs.ellps_to_ortho_height(points, geoh, crs)
+        assert result == approx(expected, abs=atol)
+        assert result_crs.vdatum == geec.crs.VDatumEnum.ORTHO
+
+    def test_ortho_to_ellps_height(self):
+        points = np.array(
+            [
+                [-62.2138562081, 16.7408514345, 123.72],
+                [-69.6365451, -31.2084545, 2388.58],
+                [-119.371255098, 34.408092589, 196.96],
+            ]
+        )
+        expected = np.array(
+            [
+                [-62.2138562081, 16.7408514345, 82.2349],
+                [-69.6365451, -31.2084545, 2419.1],
+                [-119.371255098, 34.408092589, 162.510695809],
+            ]
+        )
+        egm96 = geec.crs.GeoidDatumEnum.EGM96
+        crs = geec.crs.CRS(gdatum=egm96)
+        geoh = geec.crs.geoid_heights(points, crs)
+
+        result, result_crs = geec.crs.ortho_to_ellps_height(points, geoh, crs)
+        print(f"result: {result}")
+        assert result == approx(expected, abs=atol)
         assert result_crs.vdatum == geec.crs.VDatumEnum.ELLPS
 
     def test_wgs84_to_ecef_to_wgs84(self):

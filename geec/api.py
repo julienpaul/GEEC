@@ -42,7 +42,9 @@ def write_file(df: pd.DataFrame, output: str = "") -> None:
         # Save result in csv file
         file_path = Path(output).expanduser().resolve()
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(file_path.with_suffix(".csv"), index=False)
+        with open(file_path.with_suffix(".csv"), "w") as f:
+            df.to_csv(f, index=False)
+
         logger.success(
             f"\nResults are saved in csv file {file_path.with_suffix('.csv')}"
         )

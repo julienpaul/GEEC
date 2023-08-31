@@ -19,7 +19,7 @@ from loguru import logger
 from rich.pretty import pprint as rprint
 
 # import from my project
-from geec.polyhedron import Polyhedron
+from geec.polyhedron0 import Polyhedron
 
 
 class Station:

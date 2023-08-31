@@ -21,6 +21,8 @@ from loguru import logger
 
 # import from my project
 
+# check internet access: https://stackoverflow.com/a/33117579/14498964
+
 
 # Set up enumerators for CRS, VDatum, and Ellipsoid model
 class CRSEnum(StrEnum):
@@ -30,11 +32,16 @@ class CRSEnum(StrEnum):
     ECEF = "ecef"
 
 
-class VDatumEnum(StrEnum):
+class GeoidDatumEnum(StrEnum):
     ELLPS = "ellps"
     EGM84 = "egm84"
     EGM96 = "egm96"
     EGM08 = "egm2008"
+
+
+class VDatumEnum(StrEnum):
+    ELLPS = "ellps"
+    ORTHO = "ortho"
 
 
 EllModelEnum = Enum("EllModelEnum", pm.Ellipsoid.models)
@@ -102,14 +109,16 @@ class CRS:
     ellps: Ellipsoid | None = None
     enu: ENU | None = None
 
+    # Geoid Datum (default Ellipsoid, mean no change in vertical position)
+    gdatum: GeoidDatumEnum = field(default=GeoidDatumEnum.ELLPS)
     # Vertical Datum (default Ellipsoid, mean no change in vertical position)
     vdatum: VDatumEnum = field(default=VDatumEnum.ELLPS)
 
     def __post_init__(self):
         # if self.name not in CRSEnum:
         #     raise KeyError(f"Invalid name. Expected one of: {CRSEnum.__members__}")
-        # if self.vdatum not in VDatumEnum:
-        #     raise KeyError(f"Invalid vdatum. Expected one of: {VDatumEnum.__members__}")
+        # if self.vdatum not in GeoidDatumEnum:
+        #     raise KeyError(f"Invalid vdatum. Expected one of: {GeoidDatumEnum.__members__}")
 
         if self.name == CRSEnum.ENU and self.enu.ellps != self.ellps:
             msg = (
@@ -161,18 +170,18 @@ def read_ref(config: Subview) -> CRSEnum:
     return CRSEnum[ref]
 
 
-def read_vdatum(config: Subview) -> VDatumEnum:
+def read_gdatum(config: Subview) -> GeoidDatumEnum:
     """Read the vertical datum from 'crs' subview (from configuration file)"""
-    vdatum = config["vdatum"].get(confuse.Optional(confuse.String("ellps"))).upper()
-    if vdatum not in VDatumEnum.__members__:
+    gdatum = config["gdatum"].get(confuse.Optional(confuse.String("ellps"))).upper()
+    if gdatum not in GeoidDatumEnum.__members__:
         msg = (
-            f"Invalid Earth Gravitational Model: {vdatum}. It must be one of"
-            f" {VDatumEnum._member_names_}"
+            f"Invalid Earth Gravitational Model: {gdatum}. It must be one of"
+            f" {GeoidDatumEnum._member_names_}"
         )
         logger.error(msg)
         raise confuse.ConfigValueError(msg)
 
-    return VDatumEnum[vdatum]
+    return GeoidDatumEnum[gdatum]
 
 
 # functions for creating CRS object instance
@@ -189,18 +198,18 @@ def create_ecef_crs(config: Subview) -> CRS:
 def create_ellipsoid_crs(config: Subview) -> CRS:
     """Create an ellipsoid CRS object from 'crs' subview (from configuration file)"""
     name, semimajor_axis, semiminor_axis = read_ellipsoid_parameters(config)
-    vdatum = read_vdatum(config)
+    gdatum = read_gdatum(config)
     ellps = Ellipsoid(
         name=name, semimajor_axis=semimajor_axis, semiminor_axis=semiminor_axis
     )
-    return CRS(name=CRSEnum.ELLPS, ellps=ellps, vdatum=vdatum)
+    return CRS(name=CRSEnum.ELLPS, ellps=ellps, gdatum=gdatum)
 
 
 def create_local_enu_crs(config: Subview) -> CRS:
     """Create a local ENU CRS object from 'crs' subview (from configuration file)"""
     name, semimajor_axis, semiminor_axis = read_ellipsoid_parameters(config)
     lon_org, lat_org, alt_org = read_enu_parameters(config)
-    vdatum = read_vdatum(config)
+    gdatum = read_gdatum(config)
     ellps = Ellipsoid(
         name=name, semimajor_axis=semimajor_axis, semiminor_axis=semiminor_axis
     )
@@ -210,7 +219,7 @@ def create_local_enu_crs(config: Subview) -> CRS:
         latitude_origin=lat_org,
         altitude_origin=alt_org,
     )
-    return CRS(name=CRSEnum.ENU, ellps=ellps, enu=enu, vdatum=vdatum)
+    return CRS(name=CRSEnum.ENU, ellps=ellps, enu=enu, gdatum=gdatum)
 
 
 CRSREF = {
@@ -247,31 +256,56 @@ def ellpsgeoid(x: pgeo.ellipsoidalKarney.LatLon):
     return 0
 
 
-VDATUMREF = {
-    VDatumEnum.ELLPS: ellpsgeoid,
-    VDatumEnum.EGM84: egm84geoid,
-    VDatumEnum.EGM96: egm96geoid,
-    VDatumEnum.EGM08: egm08geoid,
+GDATUMREF = {
+    GeoidDatumEnum.ELLPS: ellpsgeoid,
+    GeoidDatumEnum.EGM84: egm84geoid,
+    GeoidDatumEnum.EGM96: egm96geoid,
+    GeoidDatumEnum.EGM08: egm08geoid,
 }
 
 
-def ellipsoid_height(
-    points: npt.NDArray[np.float64], crs: CRS
+def geoid_heights(points: npt.NDArray[np.float64], crs: CRS) -> npt.NDArray[np.float64]:
+    """Compute geoid heights at points location."""
+    logger.info("Compute geoid heights at points location")
+    func = GDATUMREF[crs.gdatum]
+    positions = [pgeo.ellipsoidalKarney.LatLon(lt, ln) for ln, lt, h in points]
+    geoh = func(positions)
+
+    return geoh
+
+
+def ortho_to_ellps_height(
+    points: npt.NDArray[np.float64], geoh: npt.NDArray[np.float64], crs: CRS
 ) -> tuple[npt.NDArray[np.float64], CRS]:
-    """Compute ellipsoid height and overwrite height values with it.
+    """Convert to ellipsoid height and overwrite height values with it.
 
     Height value assume to be orthometric height
     """
-    logger.info("Convert points altitude to ellipsoid height")
-    func = VDATUMREF[crs.vdatum]
-    positions = [pgeo.ellipsoidalKarney.LatLon(lt, ln) for ln, lt, h in points]
-    geoh = func(positions)
+    logger.info("Convert points altitude from orthometric to ellipsoid height")
 
     # ellipsoid height (from GPS) = orthometric height + geoid height
     points.T[2] += geoh
 
     # update coordinates reference system
     crs.vdatum = VDatumEnum.ELLPS
+
+    return points, crs
+
+
+def ellps_to_ortho_height(
+    points: npt.NDArray[np.float64], geoh: npt.NDArray[np.float64], crs: CRS
+) -> tuple[npt.NDArray[np.float64], CRS]:
+    """Compute orthometric height and overwrite height values with it.
+
+    Height value assume to be ellipsoid height
+    """
+    logger.info("Convert points altitude from ellpsoid to orthometric height")
+
+    # orthometric height = ellipsoid height (from GPS) - geoid height
+    points.T[2] -= geoh
+
+    # update coordinates reference system
+    crs.vdatum = VDatumEnum.ORTHO
 
     return points, crs
 

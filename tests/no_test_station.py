@@ -7,7 +7,7 @@ import numpy as np
 
 # import from other lib
 # import from my project
-from geec.polyhedron import Polyhedron
+from geec.polyhedron0 import Polyhedron
 from geec.station import Station
 from geec.utils import epsilon
 from tests.conftest import Cube, CubeExcepted

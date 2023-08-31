@@ -12,7 +12,7 @@
 
 [![cookiecutter](https://img.shields.io/badge/built%20with-Cookiecutter%20Poetry-ff69b4.svg?logo=cookiecutter)](https://github.com/fpgmaas/cookiecutter-poetry)
 
-Program to calculate gravity and gravity gradients fields due to irregularly shaped bodies.
+Program to calculate gravity fields [mGal] and gravity gradients fields [E] due to irregularly shaped bodies.
 
 ---
 <p align="center">
@@ -35,7 +35,7 @@ $ python3 -m geec run <ouptut>
 
 ### To compute gravity fields [mGal] and gradient gravity fields [E] from a mass body at some observation points.
 ```
-$ python3 -m geec run --gradient <ouptut>
+$ python3 -m geec run <ouptut> --gradient
 ```
 
 <!--
